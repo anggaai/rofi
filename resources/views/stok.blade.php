@@ -1,5 +1,44 @@
 <x-sidebar>
     <div class="space-y-8">
+        @if (session('success'))
+
+            <div
+                id="successAlert"
+                class="px-5 py-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between transition-all duration-500"
+            >
+
+                <div class="flex items-start gap-3">
+
+                    <div class="text-emerald-600 font-bold">
+                        ✓
+                    </div>
+
+                    <div>
+
+                        <p class="text-xs font-bold text-emerald-700">
+                            Berhasil
+                        </p>
+
+                        <p class="text-xs text-emerald-600 mt-0.5">
+                            {{ session('success') }}
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <button
+                    type="button"
+                    onclick="tutupSuccessAlert()"
+                    class="text-emerald-500 hover:text-emerald-700 text-xl font-bold ml-4"
+                >
+                    &times;
+                </button>
+
+            </div>
+
+        @endif
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
                 <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Katalog Stok Material</h1>
@@ -187,30 +226,84 @@
                 </svg>
             </button>
         </div>
-        <div id="warningBox" class="mx-6 mt-4 p-4 rounded-2xl bg-amber-50/70 border border-amber-200/60 flex items-start gap-3 text-amber-900 shadow-xs animate-pulse-fast transition-all duration-500 opacity-100 visible">
-            <div class="p-1.5 bg-amber-100 rounded-xl text-amber-600 shrink-0 mt-0.5">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                </svg>
+        @if (!$errors->any())
+
+            <div id="warningBox" class="mx-6 mt-4 p-4 rounded-2xl bg-amber-50/70 border border-amber-200/60 flex items-start gap-3 text-amber-900 shadow-xs animate-pulse-fast transition-all duration-500 opacity-100 visible">
+
+                <div class="p-1.5 bg-amber-100 rounded-xl text-amber-600 shrink-0 mt-0.5">
+                    ⚠️
+                </div>
+
+                <div class="text-xs leading-relaxed">
+
+                    <span class="font-semibold block text-amber-950 mb-0.5">
+                        Perhatian Sebelum Menambahkan
+                    </span>
+
+                    <p class="text-amber-800/90 font-medium">
+                        Mohon periksa terlebih dahulu data barang yang ingin ditambahkan pada kolom pencarian agar mengurangi kemungkinan duplikasi yang tidak diinginkan.
+                    </p>
+
+                </div>
+
             </div>
-            <div class="text-xs leading-relaxed">
-                <span class="font-semibold block text-amber-950 mb-0.5">Perhatian Sebelum Menambahkan</span>
-                <p class="text-amber-800/90 font-medium">
-                    Mohon periksa terlebih dahulu data barang yang ingin ditambahkan pada kolom pencarian agar mengurangi kemungkinan duplikasi yang tidak diinginkan.
-                </p>
-            </div>
-        </div>
+
+        @endif
 
         <form action="{{ route('barang.store') }}" method="POST" enctype="multipart/form-data" class="flex flex-col flex-1 min-h-0 m-0">
             @csrf
-            
+            @if ($errors->has('nama_barang'))
+                <div class="mx-6 mt-4 px-4 py-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3">
+
+                    <div class="text-rose-600 mt-0.5">
+                        ⚠️
+                    </div>
+
+                    <div>
+                        <p class="text-xs font-bold text-rose-700">
+                            Data Tidak Dapat Disimpan
+                        </p>
+
+                        <p class="text-xs text-rose-600 mt-0.5">
+                            {{ $errors->first('nama_barang') }}
+                        </p>
+                    </div>
+
+                </div>
+            @endif
             <div class="p-6 space-y-4.5 overflow-y-auto flex-1 content-custom-scroll bg-white">
                 
                 <div class="space-y-1.5">
-                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Nama Barang</label>
-                    <input type="text" name="nama_barang" required 
-                        class="w-full px-4 py-2.5 bg-slate-50/60 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all focus:bg-white" 
-                        placeholder="Contoh: Semen Tiga Roda 40kg">
+
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        Nama Barang
+                    </label>
+
+                    <input
+                        type="text"
+                        name="nama_barang"
+                        value="{{ old('nama_barang') }}"
+                        required
+                        class="w-full px-4 py-2.5 bg-slate-50/60 border
+                        {{ $errors->has('nama_barang') ? 'border-rose-500' : 'border-slate-200' }}
+                        rounded-xl text-sm text-slate-800 placeholder-slate-400
+                        focus:outline-none focus:ring-4 focus:ring-indigo-500/10
+                        focus:border-indigo-500 transition-all focus:bg-white"
+                        placeholder="Contoh: Semen Tiga Roda 40kg"
+                    >
+
+                    @error('nama_barang')
+
+                        <p class="mt-1 px-3 py-2 text-[11px] font-semibold
+                                text-rose-600 bg-rose-50
+                                border border-rose-100 rounded-lg">
+
+                            {{ $message }}
+
+                        </p>
+
+                    @enderror
+
                 </div>
 
                 <div class="space-y-1.5">
@@ -351,6 +444,44 @@
             textLabel.classList.add('text-slate-700');
         }
     }
+     function tutupSuccessAlert() {
+
+        const alert =
+            document.getElementById('successAlert');
+
+        if (!alert) {
+            return;
+        }
+
+        alert.classList.add(
+            'opacity-0',
+            '-translate-y-2'
+        );
+
+        setTimeout(function () {
+
+            alert.remove();
+
+        }, 500);
+    }
+    document.addEventListener(
+        'DOMContentLoaded',
+        function () {
+
+            const successAlert =
+                document.getElementById('successAlert');
+
+            if (successAlert) {
+
+                setTimeout(function () {
+
+                    tutupSuccessAlert();
+
+                }, 4000);
+
+            }
+        }
+    );
 
     // --- TAMBAHAN KODE UNTUK MENGHILANGKAN WARNING SAAT INPUT DIKLIK ---
     document.addEventListener('DOMContentLoaded', function () {
@@ -381,6 +512,11 @@
             });
         }
     });
+    @if ($errors->any())
+    document.addEventListener('DOMContentLoaded', function () {
+        openModal();
+    });
+@endif
 </script>
 
 <style>

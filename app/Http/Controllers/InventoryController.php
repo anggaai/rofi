@@ -5,13 +5,17 @@ use App\Models\BarangKeluar;
 use App\Models\BarangMasuk;
 use App\Models\NotaPembeli;
 use App\Models\StokBarang;
+use App\Models\StokOpname;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Psy\Readline\Interactive\Input\Buffer;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Carbon\Carbon;
 
 class InventoryController extends Controller
 {
@@ -28,6 +32,34 @@ class InventoryController extends Controller
         }
 
         $stokBarang = $query->get();
+        foreach ($stokBarang as $barang) {
+
+    $hasil = $this->hitungRekomendasiBuffer($barang);
+
+    $barang->rekomendasi_buffer =
+        $hasil['buffer_sederhana'];
+
+    $barang->rekomendasi_safety =
+        $hasil['safety_stock'];
+
+    $barang->data_buffer_tersedia =
+        $hasil['tersedia'];
+
+    $barang->pemakaian_rata =
+        $hasil['pemakaian_rata'];
+
+    $barang->pemakaian_maks =
+        $hasil['pemakaian_maks'];
+
+    $barang->standar_deviasi =
+        $hasil['standar_deviasi'];
+
+    $barang->lead_time_rata =
+        $hasil['lead_time_rata'];
+
+    $barang->lead_time_maks =
+        $hasil['lead_time_maks'];
+}
         $bufferStok = StokBarang::whereRaw('stok <= stok_minimum')->orderBy('stok', 'asc')->get();
         
         // Statistik untuk card
@@ -116,42 +148,168 @@ class InventoryController extends Controller
         return view('buffer-stok-create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-
-
-
-    // public function store(Request $request)
-    // {
-    //     $validated = $request->validate([
-    //         'kode_barang' => 'required|string|unique:stok_barang',
-    //         'nama_barang' => 'required|string',
-    //         'kategori' => 'required|string',
-    //         'stok' => 'required|integer|min:0',
-    //         'stok_minimum' => 'required|integer|min:0',
-    //         'harga_beli' => 'required|integer|min:0',
-    //         'harga_jual' => 'required|integer|min:0',
-    //     ]);
-        
-    //     StokBarang::create($validated);
-        
-    //     // Kirim notifikasi jika setelah tambah ada buffer
-    //     $this->checkAndSendNotification();
-        
-    //     return redirect()->route('buffer-stok.index')
-    //                      ->with('success', 'Material berhasil ditambahkan!');
-    // }
-
-
-
-    /**
-     * Display the specified resource.
-     */
+    
     public function show($id)
     {
         $barang = StokBarang::findOrFail($id);
-        return view('showbarang', compact('barang'));
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | RIWAYAT BARANG MASUK / PEMBELIAN
+    |--------------------------------------------------------------------------
+    */
+
+    $riwayatMasuk = BarangMasuk::where('stok_barang_id', $barang->id)
+        ->get()
+        ->map(function ($item) {
+
+            return [
+                'id' => $item->id,
+                'sumber' => 'barang_masuk',
+                'tanggal' => Carbon::parse($item->tanggal_masuk),
+                'aktivitas' => 'Pembelian',
+                'masuk' => $item->jumlah,
+                'keluar' => 0,
+                'keterangan' => $item->supplier
+                    ? 'Supplier: ' . $item->supplier
+                    : 'Barang masuk',
+            ];
+        });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | RIWAYAT BARANG KELUAR / PENJUALAN
+    |--------------------------------------------------------------------------
+    */
+
+    $riwayatKeluar = BarangKeluar::with('notaPembeli')
+        ->where('stok_barang_id', $barang->id)
+        ->get()
+        ->map(function ($item) {
+
+            $tanggal = $item->notaPembeli?->tanggal_keluar
+                ?? $item->created_at;
+
+            return [
+                'id' => $item->id,
+                'sumber' => 'barang_keluar',
+                'tanggal' => Carbon::parse($tanggal),
+                'aktivitas' => 'Penjualan',
+                'masuk' => 0,
+                'keluar' => $item->jumlah,
+                'keterangan' => $item->notaPembeli
+                    ? 'Nota M3J#-' . str_pad(
+                        $item->notaPembeli->id,
+                        6,
+                        '0',
+                        STR_PAD_LEFT
+                    )
+                    : 'Barang keluar',
+            ];
+        });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | RIWAYAT STOK OPNAME
+    |--------------------------------------------------------------------------
+    */
+
+    $riwayatOpname = StokOpname::where('stok_barang_id', $barang->id)
+        ->get()
+        ->map(function ($item) {
+
+            return [
+                'id' => $item->id,
+                'sumber' => 'stok_opname',
+                'tanggal' => Carbon::parse($item->tanggal),
+
+                'aktivitas' => $item->jenis_opname === 'penambahan'
+                    ? 'Opname Penambahan'
+                    : 'Opname Pengurangan',
+
+                'masuk' => $item->jenis_opname === 'penambahan'
+                    ? $item->jumlah_perubahan
+                    : 0,
+
+                'keluar' => $item->jenis_opname === 'pengurangan'
+                    ? $item->jumlah_perubahan
+                    : 0,
+
+                'keterangan' => $item->keterangan_opname ?? '-',
+            ];
+        });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | GABUNGKAN SEMUA RIWAYAT
+    |--------------------------------------------------------------------------
+    */
+
+    $semuaRiwayat = collect()
+        ->concat($riwayatMasuk)
+        ->concat($riwayatKeluar)
+        ->concat($riwayatOpname)
+        ->sortByDesc('tanggal')
+        ->values();
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | KALKULASI
+    |--------------------------------------------------------------------------
+    */
+
+    $totalPembelian = $riwayatMasuk->sum('masuk');
+
+    $totalTerjual = $riwayatKeluar->sum('keluar');
+
+    $totalMasukNonPembelian = $riwayatOpname
+        ->where('aktivitas', 'Opname Penambahan')
+        ->sum('masuk');
+
+    $totalKeluarNonPenjualan = $riwayatOpname
+        ->where('aktivitas', 'Opname Pengurangan')
+        ->sum('keluar');
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | PAGINATION MANUAL
+    |--------------------------------------------------------------------------
+    */
+
+    $perPage = 10;
+
+    $currentPage = LengthAwarePaginator::resolveCurrentPage();
+
+    $currentItems = $semuaRiwayat
+        ->forPage($currentPage, $perPage)
+        ->values();
+
+    $riwayatStok = new LengthAwarePaginator(
+        $currentItems,
+        $semuaRiwayat->count(),
+        $perPage,
+        $currentPage,
+        [
+            'path' => request()->url(),
+            'query' => request()->query(),
+        ]
+    );
+
+
+    return view('showbarang', compact(
+        'barang',
+        'riwayatStok',
+        'totalPembelian',
+        'totalTerjual',
+        'totalMasukNonPembelian',
+        'totalKeluarNonPenjualan'
+    ));;
     }
 
     /**
@@ -284,25 +442,140 @@ class InventoryController extends Controller
      * Update stok minimum via AJAX
      */
     public function updateStokMinimum(Request $request)
-    {
-        try {
-            $request->validate([
-                'id' => 'required|exists:stok_barang,id',
-                'stok_minimum' => 'required|integer|min:0'
-            ]);
-            
-            $barang = StokBarang::findOrFail($request->id);
-            $barang->stok_minimum = $request->stok_minimum;
-            $barang->save();
-            
-            // Kirim notifikasi setelah update stok minimum
-            $this->checkAndSendNotification();
-            
-            return response()->json(['success' => true, 'message' => 'Stok minimum berhasil diperbarui']);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+{
+    try {
+
+        $request->validate([
+
+            'id' =>
+                'required|exists:stok_barang,id',
+
+            'metode' =>
+                'required|in:custom,sederhana,statistik',
+
+            'stok_minimum_custom' =>
+                'nullable|integer|min:0',
+
+        ]);
+
+
+        $barang = StokBarang::findOrFail(
+            $request->id
+        );
+
+
+        $hasil = $this->hitungRekomendasiBuffer(
+            $barang
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | CUSTOM
+        |--------------------------------------------------------------------------
+        */
+
+        if ($request->metode === 'custom') {
+
+            if ($request->stok_minimum_custom === null) {
+
+                return response()->json([
+                    'success' => false,
+                    'message' =>
+                        'Nilai stok minimum custom harus diisi.'
+                ], 422);
+            }
+
+
+            $barang->stok_minimum_custom =
+                $request->stok_minimum_custom;
+
+
+            $barang->stok_minimum =
+                $request->stok_minimum_custom;
         }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | BUFFER SEDERHANA
+        |--------------------------------------------------------------------------
+        */
+
+        elseif ($request->metode === 'sederhana') {
+
+            if (!$hasil['tersedia']) {
+
+                return response()->json([
+                    'success' => false,
+                    'message' =>
+                        'Rekomendasi buffer belum dapat dihitung karena data lead time belum tersedia.'
+                ], 422);
+            }
+
+
+            $barang->stok_minimum =
+                $hasil['buffer_sederhana'];
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | SAFETY STOCK
+        |--------------------------------------------------------------------------
+        */
+
+        elseif ($request->metode === 'statistik') {
+
+            if (!$hasil['tersedia']) {
+
+                return response()->json([
+                    'success' => false,
+                    'message' =>
+                        'Safety stock belum dapat dihitung karena data lead time belum tersedia.'
+                ], 422);
+            }
+
+
+            $barang->stok_minimum =
+                $hasil['safety_stock'];
+        }
+
+
+        $barang->metode_stok_minimum =
+            $request->metode;
+
+
+        $barang->save();
+
+
+        $this->checkAndSendNotification();
+
+
+        return response()->json([
+
+            'success' => true,
+
+            'message' =>
+                'Patokan stok minimum berhasil diperbarui.',
+
+            'stok_minimum' =>
+                $barang->stok_minimum,
+
+        ]);
+
+
+    } catch (\Exception $e) {
+
+        return response()->json([
+
+            'success' => false,
+
+            'message' => $e->getMessage(),
+
+        ], 500);
     }
+}   
 
     /**
      * Cek dan kirim notifikasi jika ada buffer stok
@@ -351,18 +624,25 @@ class InventoryController extends Controller
         ->latest('deleted_at')
         ->get();
 
+    $trashedOpnames = StokOpname::onlyTrashed()
+    ->with(['stokBarang', 'user'])
+    ->orderByDesc('deleted_at')
+    ->get();
+
     // 5. Hitung seluruh data yang ada di tempat sampah
     $countTrashed =
         $trashedBarang->count() +
         $trashedBarangMasuk->count() +
         $trashedNotaPembeli->count() +
-        $trashedBarangKeluar->count();
+        $trashedBarangKeluar->count() +
+         $trashedOpnames->count();
 
     return view('sampah', compact(
         'trashedBarang',
         'trashedBarangMasuk',
         'trashedNotaPembeli',
         'trashedBarangKeluar',
+        'trashedOpnames',
         'countTrashed'
     ));
 }
@@ -483,12 +763,14 @@ public function storeBarangMasuk(Request $request)
         'stok_barang_id' => 'required|exists:stok_barang,id',
         'jumlah' => 'required|integer|min:1',
         'tanggal_masuk' => 'required|date',
+        'tanggal_pesan' =>'required|date|before_or_equal:tanggal_masuk',
         'supplier' => 'nullable|string|max:255',
     ]);
 
     BarangMasuk::create([
         'stok_barang_id' => $request->stok_barang_id,
         'jumlah' => $request->jumlah,
+        'tanggal_pesan' =>$request->tanggal_pesan,
         'tanggal_masuk' => $request->tanggal_masuk,
         'supplier' => $request->supplier,
     ]);
@@ -598,36 +880,139 @@ public function barangkeluardestroy($id)
 
   public function barangstore(Request $request)
 {
-    $request->validate([
-        'nama_barang' => 'required',
-        'kategori' => 'required',
-        'stok' => 'required|integer|min:0',
-        'stok_minimum' => 'required|integer|min:0',
-        'harga_beli' => 'required|integer|min:0',
-        'harga_jual' => 'required|integer|min:0',
-        'kode_barang' => ['nullable',Rule::unique('stok_barang', 'kode_barang')],
-        'gambar' => 'nullable|image|mimes:jpg,jpeg,png|max:2048'
+    /*
+    |--------------------------------------------------------------------------
+    | RAPIIKAN NAMA BARANG
+    |--------------------------------------------------------------------------
+    |
+    | Contoh:
+    | "  Semen   Tiga Roda  "
+    | menjadi:
+    | "Semen Tiga Roda"
+    |
+    */
+    $namaBarang = preg_replace(
+        '/\s+/',
+        ' ',
+        trim($request->nama_barang)
+    );
+
+    $request->merge([
+        'nama_barang' => $namaBarang
     ]);
-    
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | VALIDASI DATA
+    |--------------------------------------------------------------------------
+    */
+    $request->validate([
+
+        'nama_barang' => [
+            'required',
+            'string',
+            'max:255',
+
+            function ($attribute, $value, $fail) {
+
+                /*
+                | Hanya cek barang yang MASIH AKTIF.
+                |
+                | Barang yang deleted_at terisi / masuk sampah
+                | otomatis TIDAK ikut diperiksa.
+                */
+                $sudahAda = StokBarang::whereRaw(
+                    'LOWER(TRIM(nama_barang)) = ?',
+                    [mb_strtolower(trim($value))]
+                )->exists();
+
+
+                if ($sudahAda) {
+
+                    $fail(
+                        'Nama barang tersebut sudah terdaftar.'
+                    );
+
+                }
+            },
+        ],
+
+        'kategori' => 'required',
+
+        'stok' => 'required|integer|min:0',
+
+        'stok_minimum' => 'required|integer|min:0',
+
+        'harga_beli' => 'required|integer|min:0',
+
+        'harga_jual' => 'required|integer|min:0',
+
+        'kode_barang' => [
+            'nullable',
+            Rule::unique(
+                'stok_barang',
+                'kode_barang'
+            )
+        ],
+
+        'gambar' =>
+            'nullable|image|mimes:jpg,jpeg,png|max:2048'
+    ]);
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | SIAPKAN DATA
+    |--------------------------------------------------------------------------
+    */
     $data = $request->all();
-    
-    // Inisialisasi namaFoto = null (sesuai konsep)
+
     $namaFoto = null;
-    
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | UPLOAD GAMBAR
+    |--------------------------------------------------------------------------
+    */
     if ($request->hasFile('gambar')) {
-        // Buat nama file: timestamp_nama_original.ext
-        $namaFoto = time() . '_' . $request->file('gambar')->getClientOriginalName();
-        
-        // Pindahkan file ke public/uploads/gambar_barang
-        $request->file('gambar')->move(public_path('uploads/gambar_barang'), $namaFoto);
-        
-        // Simpan hanya nama filenya ke database
+
+        $namaFoto =
+            time() . '_' .
+            $request
+                ->file('gambar')
+                ->getClientOriginalName();
+
+
+        $request
+            ->file('gambar')
+            ->move(
+                public_path(
+                    'uploads/gambar_barang'
+                ),
+                $namaFoto
+            );
+
+
         $data['gambar'] = $namaFoto;
     }
-    
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | SIMPAN BARANG
+    |--------------------------------------------------------------------------
+    */
     StokBarang::create($data);
-    
-    return redirect()->route('stok')->with('success', 'Material berhasil ditambahkan!');
+
+
+    return redirect()
+        ->route('stok')
+        ->with(
+            'success',
+            'Material berhasil ditambahkan!'
+        );
 }
 public function restoreBarangMasuk($id)
 {
@@ -686,59 +1071,314 @@ public function notaPembeli(Request $request)
 // 2. Menyimpan nota baru dan memotong stok barang utama otomatis (Barang Keluar)
 public function storeNotaPembeli(Request $request)
 {
-        // Validasi input form (barang berupa array)
-        $request->validate([
-            'nama_pembeli' => 'required|string|max:255',
-            'tujuan' => 'nullable|string',
-            'barang' => 'required|array|min:1',
-            'barang.*.stok_barang_id' => 'required|exists:stok_barang,id',
-            'barang.*.jumlah' => 'required|integer|min:1',
-            'barang.*.harga_satuan' => 'required|numeric|min:0',
-            'tanggal_keluar' => 'required|date',
-        ]);
+    /*
+    |--------------------------------------------------------------------------
+    | VALIDASI FORM DASAR
+    |--------------------------------------------------------------------------
+    */
+    $request->validate([
+        'nama_pembeli' => 'required|string|max:255',
+        'tujuan' => 'nullable|string',
+        'barang' => 'required|array|min:1',
+        'barang.*.stok_barang_id' => 'required|exists:stok_barang,id',
+        'barang.*.jumlah' => 'required|integer|min:1',
+        'barang.*.harga_satuan' => 'required|numeric|min:0',
+        'tanggal_keluar' => 'required|date',
+    ]);
 
-        // Gunakan Database Transaction agar aman (jika satu gagal, semua dibatalkan)
-        DB::beginTransaction();
 
-        try {
-            // 1. Simpan data ke tabel induk (nota_pembeli)
-            $nota = NotaPembeli::create([
-                'nama_pembeli' => $request->nama_pembeli,
-                'tujuan' => $request->tujuan,
-                'tanggal_keluar' => $request->tanggal_keluar,
-                'total_harga' => 0, // sementara diisi 0
-            ]);
+    /*
+    |--------------------------------------------------------------------------
+    | MULAI DATABASE TRANSACTION
+    |--------------------------------------------------------------------------
+    |
+    | Semua proses dianggap satu kesatuan.
+    | Jika ada satu stok bermasalah, semuanya dibatalkan.
+    |
+    */
+    DB::beginTransaction();
 
-            $totalHarga = 0;
 
-            // 2. Looping data array barang untuk disimpan ke tabel anak (barang_keluar)
-            foreach ($request->barang as $item) {
-                $subtotal = $item['jumlah'] * $item['harga_satuan'];
-                $totalHarga += $subtotal;
+    try {
 
-                BarangKeluar::create([
-                    'nota_pembeli_id' => $nota->id,
-                    'stok_barang_id' => $item['stok_barang_id'],
-                    'jumlah' => $item['jumlah'],
-                    'harga_satuan' => $item['harga_satuan'],
-                ]);
+        /*
+        |--------------------------------------------------------------------------
+        | 1. KELOMPOKKAN BARANG YANG SAMA
+        |--------------------------------------------------------------------------
+        |
+        | Contoh request:
+        |
+        | Semen = 6
+        | Pasir = 2
+        | Semen = 5
+        |
+        | Akan menjadi:
+        |
+        | Semen = 11
+        | Pasir = 2
+        |
+        */
+        $barangGabungan = collect($request->barang)
 
-                // 3. (Opsional) Potong stok di gudang secara otomatis
-                $stok = StokBarang::find($item['stok_barang_id']);
-                $stok->decrement('stok', $item['jumlah']);
+            ->groupBy(function ($item) {
+
+                return (string) $item['stok_barang_id'];
+
+            })
+
+            ->map(function ($items) {
+
+                return $items->sum(function ($item) {
+
+                    return (int) $item['jumlah'];
+
+                });
+
+            });
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | 2. AMBIL SEMUA STOK DAN KUNCI SEMENTARA
+        |--------------------------------------------------------------------------
+        |
+        | lockForUpdate() penting supaya dua transaksi bersamaan
+        | tidak menjual stok yang sama melewati batas.
+        |
+        */
+        $stokBarang = StokBarang::whereIn(
+                'id',
+                $barangGabungan->keys()->all()
+            )
+
+            ->lockForUpdate()
+
+            ->get()
+
+            ->keyBy(function ($item) {
+
+                return (string) $item->id;
+
+            });
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | 3. CEK TOTAL QTY DENGAN STOK ASLI DATABASE
+        |--------------------------------------------------------------------------
+        */
+        $stokTidakCukup = [];
+
+
+        foreach ($barangGabungan as $stokId => $totalJumlah) {
+
+            $barang =
+                $stokBarang->get((string) $stokId);
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Jaga-jaga barang tidak ditemukan
+            |--------------------------------------------------------------------------
+            */
+            if (!$barang) {
+
+                $stokTidakCukup[] =
+                    "Barang dengan ID {$stokId} tidak ditemukan.";
+
+                continue;
             }
 
-            // 4. Update total_harga di tabel induk dengan hasil penjumlahan asli
-            $nota->update(['total_harga' => $totalHarga]);
 
-            DB::commit();
-            return redirect()->back()->with('success', 'Nota baru berhasil diterbitkan!');
+            /*
+            |--------------------------------------------------------------------------
+            | TOTAL QTY TIDAK BOLEH MELEBIHI STOK
+            |--------------------------------------------------------------------------
+            */
+            if ($totalJumlah > $barang->stok) {
 
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+                $stokTidakCukup[] =
+                    "{$barang->nama_barang}: Qty {$totalJumlah} melebihi stok tersedia {$barang->stok}.";
+            }
         }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | 4. JIKA ADA STOK TIDAK CUKUP
+        |--------------------------------------------------------------------------
+        |
+        | Nota BELUM dibuat.
+        | Barang keluar BELUM dibuat.
+        | Stok BELUM dikurangi.
+        |
+        */
+        if (!empty($stokTidakCukup)) {
+
+            DB::rollBack();
+
+
+            return redirect()
+                ->back()
+
+                ->withErrors([
+                    'stok' =>
+                        "Stok tidak mencukupi.\n\n" .
+                        implode("\n", $stokTidakCukup)
+                ])
+
+                ->withInput();
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | 5. BUAT NOTA
+        |--------------------------------------------------------------------------
+        |
+        | Bagian ini hanya dijalankan jika SEMUA stok aman.
+        |
+        */
+        $nota = NotaPembeli::create([
+
+            'nama_pembeli' =>
+                $request->nama_pembeli,
+
+            'tujuan' =>
+                $request->tujuan,
+
+            'tanggal_keluar' =>
+                $request->tanggal_keluar,
+
+            'total_harga' => 0,
+        ]);
+
+
+        $totalHarga = 0;
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | 6. SIMPAN DETAIL BARANG KELUAR
+        |--------------------------------------------------------------------------
+        */
+        foreach ($request->barang as $item) {
+
+            $jumlah =
+                (int) $item['jumlah'];
+
+            $hargaSatuan =
+                (float) $item['harga_satuan'];
+
+
+            $subtotal =
+                $jumlah * $hargaSatuan;
+
+
+            $totalHarga += $subtotal;
+
+
+            BarangKeluar::create([
+
+                'nota_pembeli_id' =>
+                    $nota->id,
+
+                'stok_barang_id' =>
+                    $item['stok_barang_id'],
+
+                'jumlah' =>
+                    $jumlah,
+
+                'harga_satuan' =>
+                    $hargaSatuan,
+            ]);
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | 7. POTONG STOK BERDASARKAN TOTAL BARANG GABUNGAN
+        |--------------------------------------------------------------------------
+        |
+        | Contoh:
+        |
+        | Semen baris 1 = 6
+        | Semen baris 2 = 5
+        |
+        | Stok dipotong SATU KALI sebesar 11.
+        |
+        */
+        foreach ($barangGabungan as $stokId => $totalJumlah) {
+
+            $barang =
+                $stokBarang->get((string) $stokId);
+
+
+            $barang->decrement(
+                'stok',
+                (int) $totalJumlah
+            );
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | 8. UPDATE TOTAL HARGA NOTA
+        |--------------------------------------------------------------------------
+        */
+        $nota->update([
+
+            'total_harga' =>
+                $totalHarga
+
+        ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | 9. SIMPAN SELURUH TRANSAKSI
+        |--------------------------------------------------------------------------
+        */
+        DB::commit();
+
+
+        return redirect()
+            ->back()
+
+            ->with(
+                'success',
+                'Nota baru berhasil diterbitkan!'
+            );
+
+
+    } catch (\Exception $e) {
+
+        /*
+        |--------------------------------------------------------------------------
+        | JIKA ADA ERROR, BATALKAN SEMUANYA
+        |--------------------------------------------------------------------------
+        */
+        DB::rollBack();
+
+
+        Log::error(
+            'Error saat menyimpan nota pembeli: ' .
+            $e->getMessage()
+        );
+
+
+        return redirect()
+            ->back()
+
+            ->with(
+                'error',
+                'Terjadi kesalahan: ' .
+                $e->getMessage()
+            )
+
+            ->withInput();
     }
+}
 
 // 3. Menghapus nota pembeli dan mengembalikan stok barang semula
 public function destroyNotaPembeli($id)
@@ -835,6 +1475,550 @@ public function manajemenUpdate(Request $request, $id)
 
     // 4. Redirect kembali dengan pesan sukses
     return redirect()->back()->with('success', 'Data akun berhasil diperbarui!');
+}
+public function opname()
+{
+    $barangs = StokBarang::orderBy('nama_barang')->get();
+
+    $opnames = StokOpname::with(['stokBarang', 'user'])
+        ->latest('tanggal')
+        ->get();
+
+    return view('inventory.opname', compact('barangs', 'opnames'));
+}
+public function storeOpname(Request $request)
+{
+    $request->validate([
+        'stok_barang_id' => 'required|exists:stok_barang,id',
+        'jenis_opname' => 'required|in:penambahan,pengurangan',
+        'jumlah_perubahan' => 'required|integer|min:1',
+        'keterangan_opname' => 'nullable|string|max:500',
+    ]);
+
+    DB::transaction(function () use ($request) {
+
+        $barang = StokBarang::lockForUpdate()
+            ->findOrFail($request->stok_barang_id);
+
+        // Stok sebelum otomatis mengambil stok saat ini
+        $stokSebelum = $barang->stok;
+
+        // Hitung stok sesudah berdasarkan jenis opname
+        if ($request->jenis_opname === 'penambahan') {
+
+            $stokSesudah = $stokSebelum + $request->jumlah_perubahan;
+
+        } else {
+
+            if ($request->jumlah_perubahan > $stokSebelum) {
+
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'jumlah_perubahan' =>
+                        'Jumlah pengurangan (' . $request->jumlah_perubahan .
+                        ') melebihi stok yang tersedia (' . $stokSebelum . ').'
+                ]);
+            }
+
+            $stokSesudah = $stokSebelum - $request->jumlah_perubahan;
+        }
+
+        // Simpan histori opname
+        StokOpname::create([
+            'stok_barang_id' => $barang->id,
+            'jenis_opname' => $request->jenis_opname,
+            'jumlah_perubahan' => $request->jumlah_perubahan,
+            'stok_sebelum' => $stokSebelum,
+            'stok_sesudah' => $stokSesudah,
+            'keterangan_opname' => $request->keterangan_opname,
+            'user_id' => Auth::id(),
+            'tanggal' => now(),
+        ]);
+
+        // Update stok utama
+        $barang->update([
+            'stok' => $stokSesudah
+        ]);
+    });
+
+    return redirect()
+        ->back()
+        ->with('success', 'Stok opname berhasil disimpan.');
+}
+public function destroyOpname($id)
+{
+    DB::transaction(function () use ($id) {
+
+        $opname = StokOpname::findOrFail($id);
+
+        $barang = StokBarang::lockForUpdate()
+            ->findOrFail($opname->stok_barang_id);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Batalkan efek opname
+        |--------------------------------------------------------------------------
+        |
+        | Penambahan dahulu +5
+        | Dihapus sekarang -5
+        |
+        | Pengurangan dahulu -5
+        | Dihapus sekarang +5
+        |
+        */
+
+        if ($opname->jenis_opname === 'penambahan') {
+
+            if ($barang->stok < $opname->jumlah_perubahan) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'opname_delete' =>
+                        'Riwayat opname tidak dapat dihapus karena stok saat ini tidak mencukupi untuk membatalkan penambahan tersebut.'
+                ]);
+            }
+
+            $barang->stok -= $opname->jumlah_perubahan;
+
+        } else {
+
+            $barang->stok += $opname->jumlah_perubahan;
+        }
+
+        $barang->save();
+
+        // Soft Delete
+        $opname->delete();
+    });
+
+    return back()->with(
+        'success',
+        'Riwayat stok opname berhasil dipindahkan ke tempat sampah dan perubahan stok telah dibatalkan.'
+    );
+}
+public function forceDeleteOpname($id)
+{
+    $opname = StokOpname::onlyTrashed()
+        ->findOrFail($id);
+
+    $opname->forceDelete();
+
+    return back()->with(
+        'success',
+        'Riwayat stok opname berhasil dihapus permanen.'
+    );
+}
+public function restoreOpname($id)
+{
+    DB::transaction(function () use ($id) {
+
+        $opname = StokOpname::onlyTrashed()
+            ->findOrFail($id);
+
+        $barang = StokBarang::lockForUpdate()
+            ->findOrFail($opname->stok_barang_id);
+
+        if ($opname->jenis_opname === 'penambahan') {
+
+            $barang->stok += $opname->jumlah_perubahan;
+
+        } else {
+
+            if ($opname->jumlah_perubahan > $barang->stok) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'opname_restore' =>
+                        'Riwayat opname tidak dapat dipulihkan karena jumlah pengurangan melebihi stok yang tersedia.'
+                ]);
+            }
+
+            $barang->stok -= $opname->jumlah_perubahan;
+        }
+
+        $barang->save();
+
+        $opname->restore();
+    });
+
+    return back()->with(
+        'success',
+        'Riwayat stok opname berhasil dipulihkan.'
+    );
+}
+public function forceDeleteNotaPembeli($id)
+{
+    $nota = NotaPembeli::onlyTrashed()->findOrFail($id);
+
+    $nota->forceDelete();
+
+    return back()->with(
+        'success',
+        'Nota pembeli berhasil dihapus permanen.'
+    );
+}
+private function hitungRekomendasiBuffer(StokBarang $barang, $periodeHari = 30)
+{
+    /*
+    |--------------------------------------------------------------------------
+    | PERIODE ANALISIS
+    |--------------------------------------------------------------------------
+    */
+
+    $tanggalAkhir = Carbon::today();
+
+    $tanggalAwal = Carbon::today()
+        ->subDays($periodeHari - 1);
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | SIAPKAN PEMAKAIAN HARIAN
+    |--------------------------------------------------------------------------
+    |
+    | Pemakaian diambil dari BARANG KELUAR / PENJUALAN.
+    | Stok opname tidak dimasukkan karena bukan permintaan pelanggan.
+    |
+    */
+
+    $pemakaianHarian = [];
+
+    $tanggal = $tanggalAwal->copy();
+
+    while ($tanggal <= $tanggalAkhir) {
+
+        $pemakaianHarian[$tanggal->format('Y-m-d')] = 0;
+
+        $tanggal->addDay();
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | AMBIL PENJUALAN
+    |--------------------------------------------------------------------------
+    */
+
+    $barangKeluar = BarangKeluar::with('notaPembeli')
+
+        ->where('stok_barang_id', $barang->id)
+
+        ->whereHas('notaPembeli', function ($query) use (
+            $tanggalAwal,
+            $tanggalAkhir
+        ) {
+
+            $query->whereBetween(
+                'tanggal_keluar',
+                [
+                    $tanggalAwal->format('Y-m-d'),
+                    $tanggalAkhir->format('Y-m-d')
+                ]
+            );
+
+        })
+
+        ->get();
+
+
+    foreach ($barangKeluar as $item) {
+
+        if (!$item->notaPembeli) {
+            continue;
+        }
+
+        $tanggalKeluar = Carbon::parse(
+            $item->notaPembeli->tanggal_keluar
+        )->format('Y-m-d');
+
+
+        if (isset($pemakaianHarian[$tanggalKeluar])) {
+
+            $pemakaianHarian[$tanggalKeluar]
+                += $item->jumlah;
+        }
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | HITUNG PEMAKAIAN HARIAN
+    |--------------------------------------------------------------------------
+    */
+
+    $dataPemakaian = array_values($pemakaianHarian);
+
+    $jumlahHari = count($dataPemakaian);
+
+    $rataPemakaian = $jumlahHari > 0
+        ? array_sum($dataPemakaian) / $jumlahHari
+        : 0;
+
+    $maksPemakaian = $jumlahHari > 0
+        ? max($dataPemakaian)
+        : 0;
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | STANDAR DEVIASI PERMINTAAN
+    |--------------------------------------------------------------------------
+    */
+
+    $jumlahKuadrat = 0;
+
+    foreach ($dataPemakaian as $nilai) {
+
+        $jumlahKuadrat += pow(
+            $nilai - $rataPemakaian,
+            2
+        );
+    }
+
+    $standarDeviasi = $jumlahHari > 0
+
+        ? sqrt(
+            $jumlahKuadrat / $jumlahHari
+        )
+
+        : 0;
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | HITUNG LEAD TIME
+    |--------------------------------------------------------------------------
+    */
+
+    $barangMasuk = BarangMasuk::where(
+            'stok_barang_id',
+            $barang->id
+        )
+
+        ->whereNotNull('tanggal_pesan')
+
+        ->whereNotNull('tanggal_masuk')
+
+        ->get();
+
+
+    $leadTimes = $barangMasuk
+
+        ->map(function ($item) {
+
+            return Carbon::parse($item->tanggal_pesan)
+                ->diffInDays(
+                    Carbon::parse($item->tanggal_masuk)
+                );
+
+        })
+
+        ->filter(function ($nilai) {
+            return $nilai >= 0;
+        });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | DATA BELUM CUKUP
+    |--------------------------------------------------------------------------
+    */
+
+    if ($leadTimes->isEmpty()) {
+
+        return [
+
+            'tersedia' => false,
+
+            'buffer_sederhana' => null,
+
+            'safety_stock' => null,
+
+            'pemakaian_rata' => $rataPemakaian,
+
+            'pemakaian_maks' => $maksPemakaian,
+
+            'standar_deviasi' => $standarDeviasi,
+
+            'lead_time_rata' => null,
+
+            'lead_time_maks' => null,
+
+        ];
+    }
+
+
+    $leadTimeRata = $leadTimes->avg();
+
+    $leadTimeMaks = $leadTimes->max();
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | METODE SEDERHANA
+    |--------------------------------------------------------------------------
+    |
+    | Buffer =
+    | (Pemakaian maks × Lead time maks)
+    | -
+    | (Pemakaian rata × Lead time rata)
+    |
+    */
+
+    $bufferSederhana =
+
+        ($maksPemakaian * $leadTimeMaks)
+
+        -
+
+        ($rataPemakaian * $leadTimeRata);
+
+
+    $bufferSederhana = max(
+        0,
+        ceil($bufferSederhana)
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | METODE STATISTIK
+    |--------------------------------------------------------------------------
+    |
+    | Safety Stock = Z × σ × √L
+    |
+    | Z = 1.65 (service level 95%)
+    | L = lead time rata-rata
+    |
+    */
+
+    $z = 1.65;
+
+    $safetyStock =
+
+        $z
+
+        * $standarDeviasi
+
+        * sqrt($leadTimeRata);
+
+
+    $safetyStock = max(
+        0,
+        ceil($safetyStock)
+    );
+
+
+    return [
+
+        'tersedia' => true,
+
+        'buffer_sederhana' => $bufferSederhana,
+
+        'safety_stock' => $safetyStock,
+
+        'pemakaian_rata' => round($rataPemakaian, 2),
+
+        'pemakaian_maks' => $maksPemakaian,
+
+        'standar_deviasi' => round($standarDeviasi, 2),
+
+        'lead_time_rata' => round($leadTimeRata, 2),
+
+        'lead_time_maks' => $leadTimeMaks,
+
+    ];
+}
+public function applyBufferMethodAll(Request $request)
+{
+    $request->validate([
+        'metode' =>
+            'required|in:custom,sederhana,statistik',
+    ]);
+
+
+    $berhasil = 0;
+    $dilewati = 0;
+
+
+    DB::transaction(function () use (
+        $request,
+        &$berhasil,
+        &$dilewati
+    ) {
+
+        $barangs = StokBarang::all();
+
+
+        foreach ($barangs as $barang) {
+
+            /*
+            | CUSTOM
+            */
+
+            if ($request->metode === 'custom') {
+
+                $barang->stok_minimum =
+                    $barang->stok_minimum_custom;
+
+                $barang->metode_stok_minimum =
+                    'custom';
+
+                $barang->save();
+
+                $berhasil++;
+
+                continue;
+            }
+
+
+            /*
+            | RUMUS
+            */
+
+            $hasil =
+                $this->hitungRekomendasiBuffer(
+                    $barang
+                );
+
+
+            if (!$hasil['tersedia']) {
+
+                $dilewati++;
+
+                continue;
+            }
+
+
+            if ($request->metode === 'sederhana') {
+
+                $barang->stok_minimum =
+                    $hasil['buffer_sederhana'];
+
+            } else {
+
+                $barang->stok_minimum =
+                    $hasil['safety_stock'];
+            }
+
+
+            $barang->metode_stok_minimum =
+                $request->metode;
+
+
+            $barang->save();
+
+            $berhasil++;
+        }
+    });
+
+
+    $this->checkAndSendNotification();
+
+
+    return response()->json([
+
+        'success' => true,
+
+        'message' =>
+            "{$berhasil} barang berhasil diperbarui. {$dilewati} barang dilewati karena data lead time belum tersedia."
+
+    ]);
 }
 
 }

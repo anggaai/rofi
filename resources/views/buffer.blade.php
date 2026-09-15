@@ -91,7 +91,39 @@
     </a>
 </div>
 @endif
+<div class="flex flex-wrap items-center gap-2 mb-4">
 
+    <span class="text-xs font-bold text-slate-500 mr-2">
+        Terapkan ke semua:
+    </span>
+
+    <button type="button"
+        onclick="applyMethodAll('sederhana')"
+        class="px-4 py-2 bg-blue-50 text-blue-600 border border-blue-100 rounded-xl text-xs font-bold hover:bg-blue-100">
+
+        ✓ Rekomendasi Buffer
+
+    </button>
+
+
+    <button type="button"
+        onclick="applyMethodAll('statistik')"
+        class="px-4 py-2 bg-violet-50 text-violet-600 border border-violet-100 rounded-xl text-xs font-bold hover:bg-violet-100">
+
+        ✓ Safety Stock
+
+    </button>
+
+
+    <button type="button"
+        onclick="applyMethodAll('custom')"
+        class="px-4 py-2 bg-slate-100 text-slate-600 border border-slate-200 rounded-xl text-xs font-bold hover:bg-slate-200">
+
+        ✓ Custom
+
+    </button>
+
+</div>
         <!-- TABLE LIST VIEW -->
 <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
     <div class="overflow-x-auto">
@@ -102,7 +134,10 @@
                     <th class="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Nama Barang</th>
                     <th class="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Kategori</th>
                     <th class="text-center px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Stok Saat Ini</th>
-                    <th class="text-center px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Stok Minimum</th>
+                    <th class="text-center px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Rekomendasi Buffer</th>                    
+                    <th class="text-center px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Rekomendasi Safety</th>
+                    <th class="text-center px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Custom</th>
+                    <th class="text-center px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Patokan Aktif</th>
                     <th class="text-center px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
                     <th class="text-right px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Harga Jual</th>
                     <th class="text-center px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Aksi</th>
@@ -152,20 +187,147 @@
                         <span class="text-xs text-slate-400">unit</span>
                     </td>
                     
-                    <!-- Stok Minimum (EDITABLE) -->
-                    <td class="px-6 py-4 text-center">
-                        <div class="flex items-center justify-center gap-2">
-                            <input type="number" 
-                                   id="min-stok-{{ $barang->id }}"
-                                   value="{{ $barang->stok_minimum }}"
-                                   min="0"
-                                   class="w-24 px-3 py-2 text-center text-sm border border-slate-200 rounded-xl focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none transition-all">
-                            <button onclick="updateStokMinimum({{ $barang->id }}, this)"
-                                    class="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-all">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                            </button>
-                        </div>
-                    </td>
+                    {{-- REKOMENDASI BUFFER --}}
+                        <td class="px-6 py-4 text-center">
+
+                            @if($barang->data_buffer_tersedia)
+
+                                <label class="flex flex-col items-center gap-2 cursor-pointer">
+
+                                    <span class="font-black text-blue-600">
+                                        {{ $barang->rekomendasi_buffer }}
+                                    </span>
+
+                                    <input type="radio"
+                                        name="metode-{{ $barang->id }}"
+                                        value="sederhana"
+
+                                        {{ $barang->metode_stok_minimum === 'sederhana'
+                                            ? 'checked'
+                                            : '' }}
+
+                                        onchange="updateBufferMethod(
+                                            {{ $barang->id }},
+                                            'sederhana'
+                                        )">
+
+                                </label>
+
+                            @else
+
+                                <span class="text-xs text-slate-400">
+                                    Data belum cukup
+                                </span>
+
+                            @endif
+
+                        </td>
+
+
+                        {{-- REKOMENDASI SAFETY --}}
+                        <td class="px-6 py-4 text-center">
+
+                            @if($barang->data_buffer_tersedia)
+
+                                <label class="flex flex-col items-center gap-2 cursor-pointer">
+
+                                    <span class="font-black text-violet-600">
+                                        {{ $barang->rekomendasi_safety }}
+                                    </span>
+
+                                    <input type="radio"
+                                        name="metode-{{ $barang->id }}"
+                                        value="statistik"
+
+                                        {{ $barang->metode_stok_minimum === 'statistik'
+                                            ? 'checked'
+                                            : '' }}
+
+                                        onchange="updateBufferMethod(
+                                            {{ $barang->id }},
+                                            'statistik'
+                                        )">
+
+                                </label>
+
+                            @else
+
+                                <span class="text-xs text-slate-400">
+                                    Data belum cukup
+                                </span>
+
+                            @endif
+
+                        </td>
+
+
+                        {{-- CUSTOM --}}
+                        <td class="px-6 py-4">
+
+                            <div class="flex items-center justify-center gap-2">
+
+                                <input type="radio"
+                                    name="metode-{{ $barang->id }}"
+
+                                    {{ $barang->metode_stok_minimum === 'custom'
+                                        ? 'checked'
+                                        : '' }}
+
+                                    onchange="updateBufferMethod(
+                                        {{ $barang->id }},
+                                        'custom'
+                                    )">
+
+
+                                <input type="number"
+                                    id="custom-{{ $barang->id }}"
+                                    value="{{ $barang->stok_minimum_custom }}"
+                                    min="0"
+                                    class="w-20 px-2 py-2 text-center border border-slate-200 rounded-xl">
+
+
+                                <button type="button"
+                                    onclick="updateBufferMethod(
+                                        {{ $barang->id }},
+                                        'custom'
+                                    )"
+                                    class="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100">
+
+                                    ✓
+
+                                </button>
+
+                            </div>
+
+                        </td>
+
+
+                        {{-- PATOKAN AKTIF --}}
+                        <td class="px-6 py-4 text-center">
+
+                            <div class="font-black text-slate-800">
+                                {{ $barang->stok_minimum }}
+                            </div>
+
+                            <span class="text-[10px] text-slate-400">
+
+                                @if($barang->metode_stok_minimum === 'sederhana')
+
+                                    Buffer Otomatis
+
+                                @elseif($barang->metode_stok_minimum === 'statistik')
+
+                                    Safety Stock
+
+                                @else
+
+                                    Custom
+
+                                @endif
+
+                            </span>
+
+                        </td>
                     
                     <!-- Status -->
                     <td class="px-6 py-4 text-center">
@@ -208,7 +370,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="8" class="px-6 py-12 text-center">
+                    <td colspan="11" class="px-6 py-12 text-center">
                         <svg class="w-20 h-20 mx-auto text-slate-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                         <h3 class="text-lg font-bold text-slate-600">Belum ada material</h3>
                         <p class="text-slate-400 text-sm mt-1">Silakan tambah material baru dengan klik tombol di atas</p>
@@ -222,52 +384,102 @@
 
 <!-- JavaScript untuk Update Stok Minimum -->
 <script>
-function updateStokMinimum(id, button) {
-    // Cari input field
-    var inputField = document.getElementById('min-stok-' + id);
-    var newValue = inputField.value;
-    
-    // Validasi input
-    if (newValue === '' || newValue < 0) {
-        alert('Stok minimum tidak boleh kosong atau negatif!');
-        return;
+function updateBufferMethod(id, metode)
+{
+    let customValue = null;
+
+    const customInput = document.getElementById('custom-' + id);
+
+    if (customInput) {
+        customValue = customInput.value;
     }
-    
-    // Ubah tombol menjadi loading
-    var originalHtml = button.innerHTML;
-    button.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>';
-    button.disabled = true;
-    
-    // Kirim request ke server
+
     fetch('{{ route("buffer.update.minimum") }}', {
         method: 'POST',
+
         headers: {
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': '{{ csrf_token() }}'
         },
+
         body: JSON.stringify({
             id: id,
-            stok_minimum: newValue
+            metode: metode,
+            stok_minimum_custom: customValue
         })
     })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Tampilkan notifikasi sukses
-            showToast('Berhasil memperbarui stok minimum!', 'success');
-            // Reload halaman setelah 1 detik
-            setTimeout(() => location.reload(), 1000);
-        } else {
-            alert('Gagal memperbarui: ' + data.message);
-            button.innerHTML = originalHtml;
-            button.disabled = false;
+
+    .then(async response => {
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.message ?? 'Gagal memperbarui buffer stock.'
+            );
         }
+
+        return data;
     })
+
+    .then(data => {
+
+        showToast(data.message, 'success');
+
+        setTimeout(() => {
+            location.reload();
+        }, 700);
+    })
+
     .catch(error => {
-        console.error('Error:', error);
-        alert('Terjadi kesalahan pada server!');
-        button.innerHTML = originalHtml;
-        button.disabled = false;
+        showToast(error.message, 'error');
+    });
+}
+
+
+function applyMethodAll(metode)
+{
+    if (!confirm('Terapkan metode ini ke seluruh barang?')) {
+        return;
+    }
+
+    fetch('{{ route("buffer.apply.all") }}', {
+        method: 'POST',
+
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+
+        body: JSON.stringify({
+            metode: metode
+        })
+    })
+
+    .then(async response => {
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.message ?? 'Gagal menerapkan metode.'
+            );
+        }
+
+        return data;
+    })
+
+    .then(data => {
+
+        showToast(data.message, 'success');
+
+        setTimeout(() => {
+            location.reload();
+        }, 1000);
+    })
+
+    .catch(error => {
+        showToast(error.message, 'error');
     });
 }
 

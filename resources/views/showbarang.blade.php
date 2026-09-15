@@ -1,5 +1,38 @@
 <x-sidebar>
     <div class="max-w-5xl mx-auto space-y-8 pb-12">
+        @if(session('success'))
+            <div id="successAlert"
+                class="flex items-center justify-between gap-4 px-5 py-4
+                       bg-emerald-50 border border-emerald-200
+                       text-emerald-700 rounded-2xl shadow-sm
+                       transition-opacity duration-300">
+
+                <div class="flex items-center gap-3">
+
+                    <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                        ✓
+                    </div>
+
+                    <div>
+                        <p class="text-sm font-bold">
+                            Berhasil
+                        </p>
+
+                        <p class="text-xs mt-0.5">
+                            {{ session('success') }}
+                        </p>
+                    </div>
+
+                </div>
+
+                <button type="button"
+                    onclick="document.getElementById('successAlert').remove()"
+                    class="text-emerald-500 hover:text-emerald-700 font-bold">
+                    ✕
+                </button>
+
+            </div>
+        @endif
         
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
@@ -12,8 +45,21 @@
                 <h1 class="text-3xl font-black text-slate-900 tracking-tight">Detail & Edit Material</h1>
                 <p class="text-slate-500 text-sm mt-1">Perbarui informasi, status stok, dan harga material secara akurat.</p>
             </div>
+            
 
-            <div class="shrink-0">
+            <div class="shrink-0 flex items-center gap-3">
+                <button type="button"
+                    onclick="document.getElementById('opnameModal').showModal()"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-xs font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-md">
+
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 4v16m8-8H4"/>
+                    </svg>
+
+                    Stok Opname
+                </button>
+
                 @if($barang->stok <= $barang->stok_minimum)
                     <span class="inline-flex items-center gap-1.5 px-4 py-2 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-black rounded-2xl uppercase tracking-wider shadow-sm animate-pulse">
                         <span class="w-2 h-2 rounded-full bg-rose-500"></span>
@@ -25,6 +71,7 @@
                         Stok Aman
                     </span>
                 @endif
+
             </div>
         </div>
 
@@ -102,7 +149,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             <div class="space-y-1.5">
                                 <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Stok Saat Ini</label>
-                                <input type="number" name="stok" value="{{ old('stok', $barang->stok) }}" required min="0"
+                                <input type="number" name="stok" value="{{ old('stok', $barang->stok) }}"   readonly
                                     class="w-full px-4 py-3 bg-slate-50/60 border border-slate-200 rounded-xl text-sm text-slate-800 font-bold focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all focus:bg-white">
                             </div>
                            <div class="space-y-1.5">
@@ -168,8 +215,610 @@
                     </div>
                 </form>
             </div>
+        </div>
+        {{-- ========================================================= --}}
+{{-- RIWAYAT PERGERAKAN STOK --}}
+{{-- ========================================================= --}}
+
+<div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
+
+    {{-- HEADER --}}
+    <div class="px-7 py-5 border-b border-slate-100">
+
+        <div class="flex flex-col gap-3">
+
+            <div>
+                <h3 class="font-black text-slate-900">
+                    Riwayat Pergerakan Stok
+                </h3>
+
+                <p class="text-xs text-slate-500 mt-1">
+                    Riwayat seluruh perubahan stok {{ $barang->nama_barang }}
+                </p>
+            </div>
+
+
+            {{-- CATATAN --}}
+            <div class="flex items-start gap-3 px-4 py-3 bg-blue-50 border border-blue-100 rounded-xl">
+
+                <div class="shrink-0 w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+
+                    <svg class="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24">
+
+                        <path stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+
+                    </svg>
+
+                </div>
+
+                <div>
+
+                    <p class="text-xs font-bold text-blue-700">
+                        Catatan
+                    </p>
+
+                    <p class="text-xs text-slate-600 mt-0.5 leading-relaxed">
+                        Riwayat ini mencatat seluruh pergerakan stok barang,
+                        baik dari pembelian, penjualan, maupun penyesuaian stok
+                        di luar transaksi pembelian dan penjualan.
+                    </p>
+
+                </div>
+
+            </div>
 
         </div>
+
+    </div>
+
+
+    {{-- ========================================================= --}}
+    {{-- TABEL --}}
+    {{-- ========================================================= --}}
+
+    <div class="overflow-x-auto">
+
+        <table class="w-full text-sm">
+
+            <thead class="bg-slate-50 text-xs uppercase text-slate-400">
+
+                <tr>
+
+                    <th class="px-6 py-4 text-left">
+                        Tanggal
+                    </th>
+
+                    <th class="px-6 py-4 text-left">
+                        Aktivitas
+                    </th>
+
+                    <th class="px-6 py-4 text-center">
+                        Masuk
+                    </th>
+
+                    <th class="px-6 py-4 text-center">
+                        Keluar
+                    </th>
+
+                    <th class="px-6 py-4 text-left">
+                        Keterangan
+                    </th>
+
+                    <th class="px-6 py-4 text-center">
+                        Aksi
+                    </th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody class="divide-y divide-slate-100">
+
+                @forelse($riwayatStok as $item)
+
+                    <tr class="hover:bg-slate-50">
+
+                        {{-- TANGGAL --}}
+                        <td class="px-6 py-4 whitespace-nowrap">
+
+                            {{ $item['tanggal']->format('d M Y, H:i') }}
+
+                        </td>
+
+
+                        {{-- AKTIVITAS --}}
+                        <td class="px-6 py-4">
+
+                            @if($item['aktivitas'] === 'Pembelian')
+
+                                <span class="px-3 py-1 rounded-full
+                                    bg-blue-50 text-blue-600
+                                    text-xs font-bold">
+
+                                    Pembelian
+
+                                </span>
+
+
+                            @elseif($item['aktivitas'] === 'Penjualan')
+
+                                <span class="px-3 py-1 rounded-full
+                                    bg-violet-50 text-violet-600
+                                    text-xs font-bold">
+
+                                    Penjualan
+
+                                </span>
+
+
+                            @elseif($item['aktivitas'] === 'Opname Penambahan')
+
+                                <span class="px-3 py-1 rounded-full
+                                    bg-emerald-50 text-emerald-600
+                                    text-xs font-bold">
+
+                                    Opname +
+
+                                </span>
+
+
+                            @else
+
+                                <span class="px-3 py-1 rounded-full
+                                    bg-rose-50 text-rose-600
+                                    text-xs font-bold">
+
+                                    Opname -
+
+                                </span>
+
+                            @endif
+
+                        </td>
+
+
+                        {{-- MASUK --}}
+                        <td class="px-6 py-4 text-center">
+
+                            @if($item['masuk'] > 0)
+
+                                <span class="font-bold text-emerald-600">
+                                    +{{ $item['masuk'] }}
+                                </span>
+
+                            @else
+
+                                <span class="text-slate-300">
+                                    -
+                                </span>
+
+                            @endif
+
+                        </td>
+
+
+                        {{-- KELUAR --}}
+                        <td class="px-6 py-4 text-center">
+
+                            @if($item['keluar'] > 0)
+
+                                <span class="font-bold text-rose-600">
+                                    -{{ $item['keluar'] }}
+                                </span>
+
+                            @else
+
+                                <span class="text-slate-300">
+                                    -
+                                </span>
+
+                            @endif
+
+                        </td>
+
+
+                        {{-- KETERANGAN --}}
+                        <td class="px-6 py-4 text-slate-600">
+
+                            {{ $item['keterangan'] }}
+
+                        </td>
+
+
+                        {{-- ================================================= --}}
+                        {{-- DELETE --}}
+                        {{-- ================================================= --}}
+
+                        <td class="px-6 py-4 text-center">
+
+                            @if($item['sumber'] === 'barang_masuk')
+
+                                <form
+                                    action="{{ route('barang-masuk.destroy', $item['id']) }}"
+                                    method="POST"
+                                    class="inline"
+                                    onsubmit="return confirm('Hapus riwayat pembelian ini? Stok dari barang masuk ini akan disesuaikan kembali.')">
+
+                                    @csrf
+                                    @method('DELETE')
+
+                                    <button type="submit"
+                                        class="inline-flex items-center justify-center
+                                            w-9 h-9
+                                            bg-rose-50 text-rose-600
+                                            border border-rose-100
+                                            rounded-xl
+                                            hover:bg-rose-100
+                                            transition-all"
+                                        title="Hapus">
+
+                                        <svg class="w-4 h-4"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24">
+
+                                            <path stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3m-9 0h12" />
+
+                                        </svg>
+
+                                    </button>
+
+                                </form>
+
+
+                            @elseif($item['sumber'] === 'barang_keluar')
+
+                                <form
+                                    action="{{ route('barang-keluar.destroy', $item['id']) }}"
+                                    method="POST"
+                                    class="inline"
+                                    onsubmit="return confirm('Hapus riwayat penjualan ini? Stok barang akan disesuaikan kembali.')">
+
+                                    @csrf
+                                    @method('DELETE')
+
+                                    <button type="submit"
+                                        class="inline-flex items-center justify-center
+                                            w-9 h-9
+                                            bg-rose-50 text-rose-600
+                                            border border-rose-100
+                                            rounded-xl
+                                            hover:bg-rose-100
+                                            transition-all"
+                                        title="Hapus">
+
+                                        <svg class="w-4 h-4"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24">
+
+                                            <path stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3m-9 0h12" />
+
+                                        </svg>
+
+                                    </button>
+
+                                </form>
+
+
+                            @else
+
+                                <form
+                                    action="{{ route('opname.destroy', $item['id']) }}"
+                                    method="POST"
+                                    class="inline"
+                                    onsubmit="return confirm('Hapus riwayat stok opname ini? Perubahan stok dari opname ini akan dibatalkan.')">
+
+                                    @csrf
+                                    @method('DELETE')
+
+                                    <button type="submit"
+                                        class="inline-flex items-center justify-center
+                                            w-9 h-9
+                                            bg-rose-50 text-rose-600
+                                            border border-rose-100
+                                            rounded-xl
+                                            hover:bg-rose-100
+                                            transition-all"
+                                        title="Hapus">
+
+                                        <svg class="w-4 h-4"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24">
+
+                                            <path stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3m-9 0h12" />
+
+                                        </svg>
+
+                                    </button>
+
+                                </form>
+
+                            @endif
+
+                        </td>
+
+                    </tr>
+
+
+                @empty
+
+                    <tr>
+
+                        <td colspan="6"
+                            class="px-6 py-10 text-center text-slate-400">
+
+                            Belum ada riwayat pergerakan stok.
+
+                        </td>
+
+                    </tr>
+
+                @endforelse
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+
+    {{-- ========================================================= --}}
+    {{-- PAGINATION --}}
+    {{-- ========================================================= --}}
+
+    @if($riwayatStok->hasPages())
+
+        <div class="px-6 py-5 border-t border-slate-100">
+
+            {{ $riwayatStok->links() }}
+
+        </div>
+
+    @endif
+
+
+    {{-- ========================================================= --}}
+    {{-- RINGKASAN PERGERAKAN STOK --}}
+    {{-- ========================================================= --}}
+
+    <div class="px-6 py-6 bg-slate-50 border-t border-slate-100">
+
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-4">
+            Ringkasan Pergerakan Stok
+        </p>
+
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+
+            {{-- PEMBELIAN --}}
+            <div class="bg-white border border-slate-200 rounded-2xl p-4">
+
+                <p class="text-[11px] font-bold text-slate-400 uppercase">
+                    Total Pembelian
+                </p>
+
+                <p class="text-xl font-black text-blue-600 mt-2">
+                    {{ number_format($totalPembelian, 0, ',', '.') }}
+                </p>
+
+                <p class="text-[10px] text-slate-400 mt-1">
+                    Barang masuk dari supplier
+                </p>
+
+            </div>
+
+
+            {{-- TERJUAL --}}
+            <div class="bg-white border border-slate-200 rounded-2xl p-4">
+
+                <p class="text-[11px] font-bold text-slate-400 uppercase">
+                    Total Terjual
+                </p>
+
+                <p class="text-xl font-black text-violet-600 mt-2">
+                    {{ number_format($totalTerjual, 0, ',', '.') }}
+                </p>
+
+                <p class="text-[10px] text-slate-400 mt-1">
+                    Barang keluar dari penjualan
+                </p>
+
+            </div>
+
+
+            {{-- NON PEMBELIAN --}}
+            <div class="bg-white border border-slate-200 rounded-2xl p-4">
+
+                <p class="text-[11px] font-bold text-slate-400 uppercase">
+                    Masuk Non Pembelian
+                </p>
+
+                <p class="text-xl font-black text-emerald-600 mt-2">
+                    {{ number_format($totalMasukNonPembelian, 0, ',', '.') }}
+                </p>
+
+                <p class="text-[10px] text-slate-400 mt-1">
+                    Penambahan melalui stok opname
+                </p>
+
+            </div>
+
+
+            {{-- NON PENJUALAN --}}
+            <div class="bg-white border border-slate-200 rounded-2xl p-4">
+
+                <p class="text-[11px] font-bold text-slate-400 uppercase">
+                    Keluar Non Penjualan
+                </p>
+
+                <p class="text-xl font-black text-rose-600 mt-2">
+                    {{ number_format($totalKeluarNonPenjualan, 0, ',', '.') }}
+                </p>
+
+                <p class="text-[10px] text-slate-400 mt-1">
+                    Pengurangan melalui stok opname
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+            <dialog id="opnameModal"
+    class="w-full max-w-lg rounded-3xl p-0 backdrop:bg-slate-900/50 shadow-2xl">
+
+    <form id="opnameForm"action="{{ route('opname.store') }}"method="POST">
+        @csrf
+
+        <input type="hidden"
+            name="stok_barang_id"
+            value="{{ $barang->id }}">
+
+        <div class="p-7">
+
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <p class="text-xs font-bold text-indigo-600 uppercase tracking-wider">
+                        Penyesuaian Stok
+                    </p>
+
+                    <h3 class="text-xl font-black text-slate-900 mt-1">
+                        Stok Opname
+                    </h3>
+
+                    <p class="text-sm text-slate-500 mt-1">
+                        {{ $barang->nama_barang }}
+                    </p>
+                </div>
+
+                <button type="button"
+                    onclick="resetOpnameModal()"
+                    class="w-9 h-9 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200">
+                    ✕
+                </button>
+            </div>
+
+
+            {{-- STOK SAAT INI --}}
+            <div class="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 mb-5">
+                <p class="text-xs text-slate-500 font-medium">
+                    Stok Saat Ini
+                </p>
+
+                <p class="text-2xl font-black text-indigo-600 mt-1">
+                    {{ $barang->stok }}
+                </p>
+            </div>
+
+
+            {{-- JENIS OPNAME --}}
+            <div class="mb-5">
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                    Jenis Opname
+                </label>
+
+                <select name="jenis_opname"
+                    required
+                    class="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500">
+
+                    <option value="">Pilih Jenis</option>
+
+                    <option value="penambahan"
+                        {{ old('jenis_opname') == 'penambahan' ? 'selected' : '' }}>
+                        Penambahan Stok
+                    </option>
+
+                    <option value="pengurangan"
+                        {{ old('jenis_opname') == 'pengurangan' ? 'selected' : '' }}>
+                        Pengurangan Stok
+                    </option>
+
+                </select>
+            </div>
+
+
+            {{-- JUMLAH --}}
+            <div class="mb-5">
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                    Jumlah Perubahan Stok
+                </label>
+
+                <input type="number"
+                    name="jumlah_perubahan"
+                    min="1"
+                    required
+                    value="{{ old('jumlah_perubahan') }}"
+                    placeholder="Contoh: 5"
+                    class="w-full px-4 py-3 border
+                        @error('jumlah_perubahan')
+                            border-rose-500
+                        @else
+                            border-slate-200
+                        @enderror
+                        rounded-xl text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500">
+
+                @error('jumlah_perubahan')
+                    <p id="jumlahPerubahanError"
+                    class="mt-2 text-xs font-semibold text-rose-600">
+                        {{ $message }}
+                    </p>
+                @enderror
+            </div>
+
+
+            {{-- KETERANGAN --}}
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                    Keterangan Opname
+                </label>
+
+                <textarea name="keterangan_opname"
+                rows="3"
+                placeholder="Contoh: Barang rusak saat pengecekan fisik"
+                class="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm resize-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500">{{ old('keterangan_opname') }}</textarea>
+            </div>
+
+        </div>
+
+
+        <div class="px-7 py-5 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+
+            <button type="button"
+                onclick="resetOpnameModal()"
+                class="px-5 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600">
+                Batal
+            </button>
+
+            <button type="submit"
+                class="px-6 py-3 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition-all shadow-lg">
+                Simpan Opname
+            </button>
+
+        </div>
+
+    </form>
+</dialog>
     </div>
 </x-sidebar>
 
@@ -181,24 +830,83 @@
 
         if (input.files && input.files.length > 0) {
             const file = input.files[0];
+
             textLabel.innerText = file.name;
             textLabel.classList.remove('text-slate-700');
             textLabel.classList.add('text-indigo-600', 'font-bold');
 
-            // Proses pembacaan file gambar untuk live preview
             const reader = new FileReader();
+
             reader.onload = function(e) {
                 preview.src = e.target.result;
                 preview.classList.remove('hidden');
-                if(placeholder) {
+
+                if (placeholder) {
                     placeholder.classList.add('hidden');
                 }
-            }
+            };
+
             reader.readAsDataURL(file);
+
         } else {
+
             textLabel.innerText = "Pilih foto baru untuk mengganti";
             textLabel.classList.remove('text-indigo-600', 'font-bold');
             textLabel.classList.add('text-slate-700');
         }
     }
+
+    function resetOpnameModal() {
+
+    const modal = document.getElementById('opnameModal');
+    const form = document.getElementById('opnameForm');
+
+    const jenis = form.querySelector('[name="jenis_opname"]');
+    const jumlah = form.querySelector('[name="jumlah_perubahan"]');
+    const keterangan = form.querySelector('[name="keterangan_opname"]');
+
+    const errorJumlah = document.getElementById('jumlahPerubahanError');
+
+    // Kosongkan input
+    jenis.value = '';
+    jumlah.value = '';
+    keterangan.value = '';
+
+    // Hilangkan warna merah pada input
+    jumlah.classList.remove('border-rose-500');
+    jumlah.classList.add('border-slate-200');
+
+    // Hilangkan pesan error
+    if (errorJumlah) {
+        errorJumlah.remove();
+    }
+
+    // Tutup modal
+    modal.close();
+}
+    document.addEventListener('DOMContentLoaded', function () {
+
+        @if($errors->has('jumlah_perubahan'))
+            const modal = document.getElementById('opnameModal');
+
+            if (modal && !modal.open) {
+                modal.showModal();
+            }
+        @endif
+
+
+        const successAlert = document.getElementById('successAlert');
+
+        if (successAlert) {
+            setTimeout(function () {
+                successAlert.classList.add('opacity-0');
+
+                setTimeout(function () {
+                    successAlert.remove();
+                }, 300);
+
+            }, 4000);
+        }
+
+    });
 </script>

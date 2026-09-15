@@ -211,6 +211,202 @@
         </div>
     </div>
 </div>
+<div class="space-y-3 mt-8">
 
+    <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+        📋 Riwayat Stok Opname ({{ $trashedOpnames->count() }})
+    </h2>
+
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+
+        <div class="overflow-x-auto">
+
+            <table class="w-full text-sm">
+
+                <thead>
+
+                    <tr class="bg-slate-50 border-b border-slate-200">
+
+                        <th class="text-left px-6 py-4 text-xs font-bold text-slate-500">
+                            Nama Barang
+                        </th>
+
+                        <th class="text-left px-6 py-4 text-xs font-bold text-slate-500">
+                            Jenis
+                        </th>
+
+                        <th class="text-center px-6 py-4 text-xs font-bold text-slate-500">
+                            Perubahan
+                        </th>
+
+                        <th class="text-center px-6 py-4 text-xs font-bold text-slate-500">
+                            Stok Sebelum
+                        </th>
+
+                        <th class="text-center px-6 py-4 text-xs font-bold text-slate-500">
+                            Stok Sesudah
+                        </th>
+
+                        <th class="text-left px-6 py-4 text-xs font-bold text-slate-500">
+                            Keterangan
+                        </th>
+
+                        <th class="text-center px-6 py-4 text-xs font-bold text-slate-500">
+                            Tanggal Dihapus
+                        </th>
+
+                        <th class="text-center px-6 py-4 text-xs font-bold text-slate-500">
+                            Aksi
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    @forelse($trashedOpnames as $opname)
+
+                        <tr class="hover:bg-slate-50 border-b border-slate-100">
+
+                            <td class="px-6 py-4 font-semibold">
+
+                                {{ $opname->stokBarang
+                                    ? $opname->stokBarang->nama_barang
+                                    : 'Barang Tidak Ditemukan' }}
+
+                            </td>
+
+
+                            <td class="px-6 py-4">
+
+                                @if($opname->jenis_opname === 'penambahan')
+
+                                    <span class="px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-xs font-bold">
+                                        Penambahan
+                                    </span>
+
+                                @else
+
+                                    <span class="px-3 py-1 rounded-full bg-rose-50 text-rose-600 text-xs font-bold">
+                                        Pengurangan
+                                    </span>
+
+                                @endif
+
+                            </td>
+
+
+                            <td class="px-6 py-4 text-center font-bold">
+
+                                @if($opname->jenis_opname === 'penambahan')
+
+                                    <span class="text-emerald-600">
+                                        +{{ $opname->jumlah_perubahan }}
+                                    </span>
+
+                                @else
+
+                                    <span class="text-rose-600">
+                                        -{{ $opname->jumlah_perubahan }}
+                                    </span>
+
+                                @endif
+
+                            </td>
+
+
+                            <td class="px-6 py-4 text-center">
+                                {{ $opname->stok_sebelum }}
+                            </td>
+
+
+                            <td class="px-6 py-4 text-center">
+                                {{ $opname->stok_sesudah }}
+                            </td>
+
+
+                            <td class="px-6 py-4">
+                                {{ $opname->keterangan_opname ?? '-' }}
+                            </td>
+
+
+                            <td class="px-6 py-4 text-center">
+
+                                {{ $opname->deleted_at->format('d/m/Y H:i') }}
+
+                            </td>
+
+
+                            <td class="px-6 py-4 text-center">
+
+                                <div class="flex items-center justify-center gap-2">
+
+                                    {{-- PULIHKAN --}}
+                                    <form action="{{ route('opname.restore', $opname->id) }}"
+                                        method="POST"
+                                        class="inline">
+
+                                        @csrf
+
+                                        <button type="submit"
+                                            class="px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-bold hover:bg-emerald-600">
+
+                                            Pulihkan
+
+                                        </button>
+
+                                    </form>
+
+
+                                    {{-- HAPUS PERMANEN --}}
+                                    <form action="{{ route('opname.force-delete', $opname->id) }}"
+                                        method="POST"
+                                        class="inline"
+                                        onsubmit="return confirm('Hapus riwayat stok opname secara permanen? Data tidak dapat dikembalikan.')">
+
+                                        @csrf
+                                        @method('DELETE')
+
+                                        <button type="submit"
+                                            class="px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-bold hover:bg-red-600">
+
+                                            Hapus Permanen
+
+                                        </button>
+
+                                    </form>
+
+                                </div>
+
+                            </td>
+
+                        </tr>
+
+                    @empty
+
+                        <tr>
+
+                            <td colspan="8"
+                                class="px-6 py-8 text-center text-slate-400">
+
+                                Tidak ada riwayat stok opname di tempat sampah
+
+                            </td>
+
+                        </tr>
+
+                    @endforelse
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
     </div>
 </x-sidebar>

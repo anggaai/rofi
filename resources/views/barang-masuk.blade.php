@@ -139,6 +139,17 @@
                         <input type="number" name="jumlah" required min="1" class="w-full border-slate-200 rounded-xl focus:ring-indigo-500">
                     </div>
                     <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-2">
+                            Tanggal Pemesanan
+                        </label>
+
+                        <input type="date"
+                            name="tanggal_pesan"
+                            value="{{ old('tanggal_pesan') }}"
+                            required
+                            class="w-full px-4 py-3 border border-slate-200 rounded-xl">
+                    </div>
+                    <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Tanggal Masuk</label>
                         <input type="date" name="tanggal_masuk" required value="{{ date('Y-m-d') }}" class="w-full border-slate-200 rounded-xl focus:ring-indigo-500">
                     </div>

@@ -156,7 +156,7 @@
     </div>
 
     {{-- MODAL INPUT NOTA BARU (MULTIPLE ITEMS WITH LINE TOTAL) --}}
-    <div id="modalNota" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden transition-all" onclick="if(event.target===this) this.classList.add('hidden')">
+    <div id="modalNota" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 transition-all {{ $errors->any() ? '' : 'hidden' }}" onclick="if(event.target===this) this.classList.add('hidden')">
         <div class="bg-white rounded-3xl w-full max-w-3xl p-6 shadow-2xl transform transition-all max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b border-slate-100 pb-4 mb-4">
                 <h2 class="text-lg font-black text-slate-800">Buat Nota Pembeli Baru</h2>
@@ -165,6 +165,11 @@
             
             <form action="{{ route('nota-pembeli.store') }}" method="POST" id="formNota">
                 @csrf
+                 @if ($errors->has('stok'))
+                    <div class="whitespace-pre-line mb-4 px-4 py-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-semibold">
+                        {{ $errors->first('stok') }}
+                    </div>
+                @endif
                 <div class="space-y-4">
                     {{-- Nama Pembeli --}}
                     <div>
@@ -199,6 +204,10 @@
                         
                         {{-- Wrapper untuk Baris Barang Dinamis --}}
                         <div id="wrapperBarang" class="space-y-3">
+                            <div
+                                id="stokSubmitError"
+                                class="hidden whitespace-pre-line mt-3 px-4 py-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-semibold">
+                            </div>
                             {{-- BARIS PERTAMA (DEFAULT) --}}
                             <div class="grid grid-cols-12 gap-2 item-barang items-center bg-slate-50/50 p-2 rounded-xl border border-slate-100">
                                 {{-- Pilih Barang (Kolom 4) --}}
@@ -206,15 +215,25 @@
                                     <select name="barang[0][stok_barang_id]" required class="select-barang w-full border-slate-200 rounded-xl text-xs py-2 focus:ring-1 focus:ring-indigo-500">
                                         <option value="">-- Pilih Material --</option>
                                         @foreach($stokBarang as $sb)
-                                            <option value="{{ $sb->id }}" data-harga="{{ $sb->harga_jual }}">
-                                                {{ $sb->nama_barang }} (Sisa: {{ $sb->stok }})
+                                            <option value="{{ $sb->id }}"
+                                                    data-harga="{{ $sb->harga_jual }}"
+                                                    data-stok="{{ $sb->stok }}">
+                                                    {{ $sb->nama_barang }} (Sisa: {{ $sb->stok }})
                                             </option>
                                         @endforeach
                                     </select>
                                 </div>
                                 {{-- Qty (Kolom 2) --}}
                                 <div class="col-span-2">
-                                    <input type="number" name="barang[0][jumlah]" required min="1" placeholder="Qty" class="input-jumlah w-full border-slate-200 rounded-xl text-xs py-2 text-center focus:ring-1 focus:ring-indigo-500">
+                                    <input type="number"
+                                        name="barang[0][jumlah]"
+                                        required
+                                        min="1"
+                                        placeholder="Qty"
+                                        class="input-jumlah w-full border-slate-200 rounded-xl text-xs py-2 text-center focus:ring-1 focus:ring-indigo-500">
+
+                                    <p class="qty-error hidden mt-1 px-2 py-1 text-[10px] leading-tight font-semibold text-rose-600 bg-rose-50 border border-rose-100 rounded-lg">
+                                    </p>
                                 </div>
                                 {{-- Harga Satuan (Kolom 3) --}}
                                 <div class="col-span-3">
@@ -247,105 +266,951 @@
         </div>
     </div>
 
+    <style>
+    .searchable-select {
+        position: relative;
+        width: 100%;
+    }
+
+    .searchable-trigger {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        background: white;
+        font-size: 12px;
+        text-align: left;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .searchable-trigger:focus {
+        outline: none;
+        border-color: #6366f1;
+        box-shadow: 0 0 0 1px #6366f1;
+    }
+
+    .searchable-dropdown-panel {
+        position: absolute;
+        top: auto;
+        bottom: calc(100% + 5px);
+        left: 0;
+        width: 100%;
+        min-width: 280px;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+        z-index: 9999;
+        overflow: hidden;
+    }
+
+    .searchable-dropdown-panel.hidden {
+        display: none;
+    }
+
+    /* PENCARIAN TETAP DI ATAS */
+    .searchable-search-wrapper {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: white;
+        padding: 8px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .searchable-search {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 12px;
+        outline: none;
+    }
+
+    .searchable-search:focus {
+        border-color: #6366f1;
+        box-shadow: 0 0 0 1px #6366f1;
+    }
+
+    /* YANG DISCROLL HANYA DAFTAR BARANG */
+    .searchable-options {
+        max-height: 220px;
+        overflow-y: auto;
+    }
+
+    .searchable-option {
+        width: 100%;
+        display: block;
+        padding: 9px 12px;
+        text-align: left;
+        font-size: 12px;
+        background: white;
+        border: none;
+        cursor: pointer;
+    }
+
+    .searchable-option:hover {
+        background: #eef2ff;
+        color: #4f46e5;
+    }
+
+    .searchable-no-result {
+        padding: 12px;
+        text-align: center;
+        font-size: 12px;
+        color: #94a3b8;
+    }
+</style>
+
     {{-- JavaScript Interaktif untuk Perhitungan Berjenjang --}}
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const wrapperBarang = document.getElementById('wrapperBarang');
-            const btnTambahBarang = document.getElementById('btnTambahBarang');
-            const liveSubtotal = document.getElementById('liveSubtotal');
-            let itemIndex = 1;
+document.addEventListener('DOMContentLoaded', function () {
 
-            // Fungsi Utama untuk menghitung Total per Item dan Subtotal Global sekaligus
-            function kalkulasiKasir() {
-                let subtotalGlobal = 0;
-                const rows = wrapperBarang.querySelectorAll('.item-barang');
-                
-                rows.forEach(row => {
-                    const qty = parseFloat(row.querySelector('.input-jumlah').value) || 0;
-                    const harga = parseFloat(row.querySelector('.input-harga').value) || 0;
-                    
-                    // 1. Hitung total per macam barang
-                    const totalItem = qty * harga;
-                    
-                    // 2. Tampilkan ke dalam input total item per baris
-                    row.querySelector('.input-total-item').value = totalItem.toLocaleString('id-ID');
-                    
-                    // 3. Akumulasikan ke subtotal nota paling bawah
-                    subtotalGlobal += totalItem;
-                });
+    const wrapperBarang = document.getElementById('wrapperBarang');
+    const btnTambahBarang = document.getElementById('btnTambahBarang');
+    const liveSubtotal = document.getElementById('liveSubtotal');
+    const formNota = document.getElementById('formNota');
+    const stokSubmitError = document.getElementById('stokSubmitError');
 
-                // 4. Tampilkan subtotal akhir nota
-                liveSubtotal.innerText = 'Rp ' + subtotalGlobal.toLocaleString('id-ID');
+    let itemIndex = 1;
+
+function buatSearchableSelect(select) {
+
+    // Jangan dibuat dua kali
+    if (select.dataset.searchable === 'true') {
+        return;
+    }
+
+    select.dataset.searchable = 'true';
+
+    // Sembunyikan select asli
+    select.style.display = 'none';
+
+
+    // Wrapper
+    const wrapper = document.createElement('div');
+    wrapper.className = 'searchable-select';
+
+
+    // Tombol dropdown
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'searchable-trigger';
+
+    trigger.innerHTML = `
+        <span class="searchable-selected">
+            -- Pilih Material --
+        </span>
+
+        <span>⌄</span>
+    `;
+
+
+    // Panel dropdown
+    const panel = document.createElement('div');
+    panel.className =
+        'searchable-dropdown-panel hidden';
+
+
+    // Search
+    const searchWrapper =
+        document.createElement('div');
+
+    searchWrapper.className =
+        'searchable-search-wrapper';
+
+
+    const searchInput =
+        document.createElement('input');
+
+    searchInput.type = 'text';
+
+    searchInput.className =
+        'searchable-search';
+
+    searchInput.placeholder =
+        'Cari material...';
+
+
+    searchWrapper.appendChild(searchInput);
+
+
+    // Daftar pilihan
+    const optionsContainer =
+        document.createElement('div');
+
+    optionsContainer.className =
+        'searchable-options';
+
+
+    panel.appendChild(searchWrapper);
+    panel.appendChild(optionsContainer);
+
+
+    wrapper.appendChild(trigger);
+    wrapper.appendChild(panel);
+
+
+    // Masukkan setelah select asli
+    select.insertAdjacentElement(
+        'afterend',
+        wrapper
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | TAMPILKAN DAFTAR BARANG
+    |--------------------------------------------------------------------------
+    */
+    function tampilkanOptions(keyword = '') {
+
+        optionsContainer.innerHTML = '';
+
+        const keywordKecil =
+            keyword.toLowerCase();
+
+        let jumlahHasil = 0;
+
+
+        Array.from(select.options).forEach(option => {
+
+            // Lewati placeholder
+            if (!option.value) {
+                return;
             }
 
-            // Otomatis isi harga saat material dipilih (Menggunakan Event Delegation)
-            wrapperBarang.addEventListener('change', function(e) {
-                if (e.target.classList.contains('select-barang')) {
-                    const selectedOption = e.target.options[e.target.selectedIndex];
-                    const hargaJual = selectedOption.getAttribute('data-harga');
-                    const row = e.target.closest('.item-barang');
-                    const inputHarga = row.querySelector('.input-harga');
-                    
-                    if(hargaJual) {
-                        inputHarga.value = hargaJual;
-                    } else {
-                        inputHarga.value = '';
-                    }
-                    kalkulasiKasir();
-                }
-            });
 
-            // Jalankan kalkulasi otomatis saat Qty atau Harga Satuan diketik manual
-            wrapperBarang.addEventListener('input', function(e) {
-                if (e.target.classList.contains('input-jumlah') || e.target.classList.contains('input-harga')) {
-                    kalkulasiKasir();
-                }
-            });
+            const nama =
+                option.textContent.trim();
 
-            // Tombol aksi: Tambah Baris Baru
-            btnTambahBarang.addEventListener('click', function() {
-                const barisBaru = `
-                <div class="grid grid-cols-12 gap-2 item-barang items-center bg-slate-50/50 p-2 rounded-xl border border-slate-100">
-                    <div class="col-span-4">
-                        <select name="barang[${itemIndex}][stok_barang_id]" required class="select-barang w-full border-slate-200 rounded-xl text-xs py-2 focus:ring-1 focus:ring-indigo-500">
-                            <option value="">-- Pilih Material --</option>
-                            @foreach($stokBarang as $sb)
-                                <option value="{{ $sb->id }}" data-harga="{{ $sb->harga_jual }}">
-                                    {{ $sb->nama_barang }} (Sisa: {{ $sb->stok }})
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-span-2">
-                        <input type="number" name="barang[${itemIndex}][jumlah]" required min="1" placeholder="Qty" class="input-jumlah w-full border-slate-200 rounded-xl text-xs py-2 text-center focus:ring-1 focus:ring-indigo-500">
-                    </div>
-                    <div class="col-span-3">
-                        <input type="number" name="barang[${itemIndex}][harga_satuan]" required min="0" placeholder="Harga (Rp)" class="input-harga w-full border-slate-200 rounded-xl text-xs py-2 bg-white focus:ring-1 focus:ring-indigo-500">
-                    </div>
-                    <div class="col-span-2">
-                        <input type="text" readonly placeholder="Total" class="input-total-item w-full border-slate-100 bg-slate-100/80 text-slate-600 rounded-xl text-xs py-2 text-right font-bold focus:outline-none">
-                    </div>
-                    <div class="col-span-1 text-center">
-                        <button type="button" class="btn-hapus-baris text-rose-400 hover:text-rose-600 text-lg font-bold transition-colors">&times;</button>
-                    </div>
-                </div>`;
-                
-                wrapperBarang.insertAdjacentHTML('beforeend', barisBaru);
-                itemIndex++;
-            });
 
-            // Tombol aksi: Hapus Baris
-            wrapperBarang.addEventListener('click', function(e) {
-                if (e.target.classList.contains('btn-hapus-baris')) {
-                    const totalBaris = wrapperBarang.querySelectorAll('.item-barang').length;
-                    if (totalBaris > 1) {
-                        e.target.closest('.item-barang').remove();
-                        kalkulasiKasir();
-                    } else {
-                        alert('Minimal harus ada 1 material di dalam nota!');
-                    }
+            if (
+                !nama
+                    .toLowerCase()
+                    .includes(keywordKecil)
+            ) {
+                return;
+            }
+
+
+            jumlahHasil++;
+
+
+            const tombol =
+                document.createElement('button');
+
+            tombol.type = 'button';
+
+            tombol.className =
+                'searchable-option';
+
+            tombol.textContent =
+                nama;
+
+
+            tombol.addEventListener(
+                'click',
+                function () {
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | SET VALUE KE SELECT ASLI
+                    |--------------------------------------------------------------------------
+                    */
+
+                    select.value =
+                        option.value;
+
+
+                    trigger.querySelector(
+                        '.searchable-selected'
+                    ).textContent =
+                        nama;
+
+
+                    panel.classList.add(
+                        'hidden'
+                    );
+
+
+                    searchInput.value = '';
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | PENTING
+                    |--------------------------------------------------------------------------
+                    |
+                    | Jalankan event change milik kode lama.
+                    | Jadi harga otomatis dan validasi stok
+                    | tetap bekerja.
+                    |
+                    */
+
+                    select.dispatchEvent(
+                        new Event(
+                            'change',
+                            {
+                                bubbles: true
+                            }
+                        )
+                    );
+
                 }
-            });
+            );
+
+
+            optionsContainer.appendChild(
+                tombol
+            );
+
         });
-    </script>
+
+
+        if (jumlahHasil === 0) {
+
+            const kosong =
+                document.createElement('div');
+
+            kosong.className =
+                'searchable-no-result';
+
+            kosong.textContent =
+                'Material tidak ditemukan';
+
+            optionsContainer.appendChild(
+                kosong
+            );
+        }
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | BUKA DROPDOWN
+    |--------------------------------------------------------------------------
+    */
+    trigger.addEventListener(
+        'click',
+        function () {
+
+            // Tutup dropdown lainnya
+            document
+                .querySelectorAll(
+                    '.searchable-dropdown-panel'
+                )
+                .forEach(item => {
+
+                    if (item !== panel) {
+                        item.classList.add(
+                            'hidden'
+                        );
+                    }
+
+                });
+
+
+            panel.classList.toggle(
+                'hidden'
+            );
+
+
+            if (
+                !panel.classList.contains(
+                    'hidden'
+                )
+            ) {
+
+                tampilkanOptions();
+
+                setTimeout(() => {
+                    searchInput.focus();
+                }, 50);
+            }
+
+        }
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | SEARCH LANGSUNG SAAT DIKETIK
+    |--------------------------------------------------------------------------
+    */
+    searchInput.addEventListener(
+        'input',
+        function () {
+
+            tampilkanOptions(
+                this.value
+            );
+
+        }
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | JANGAN TUTUP SAAT SEARCH DIKLIK
+    |--------------------------------------------------------------------------
+    */
+    searchInput.addEventListener(
+        'click',
+        function (e) {
+
+            e.stopPropagation();
+
+        }
+    );
+
+
+    // Tampilkan data awal
+    tampilkanOptions();
+}
+document
+    .querySelectorAll('.select-barang')
+    .forEach(select => {
+
+        buatSearchableSelect(select);
+
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | HITUNG TOTAL HARGA
+    |--------------------------------------------------------------------------
+    */
+    function kalkulasiKasir() {
+
+        let subtotalGlobal = 0;
+
+        const rows = wrapperBarang.querySelectorAll('.item-barang');
+
+        rows.forEach(row => {
+
+            const qty =
+                parseFloat(row.querySelector('.input-jumlah').value) || 0;
+
+            const harga =
+                parseFloat(row.querySelector('.input-harga').value) || 0;
+
+            const totalItem = qty * harga;
+
+            row.querySelector('.input-total-item').value =
+                totalItem.toLocaleString('id-ID');
+
+            subtotalGlobal += totalItem;
+        });
+
+        liveSubtotal.innerText =
+            'Rp ' + subtotalGlobal.toLocaleString('id-ID');
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | VALIDASI STOK
+    |--------------------------------------------------------------------------
+    |
+    | Fungsi ini akan:
+    |
+    | 1. Membaca semua baris barang.
+    | 2. Menggabungkan barang dengan ID yang sama.
+    | 3. Menjumlahkan seluruh Qty.
+    | 4. Membandingkan dengan stok asli.
+    |
+    */
+    function validasiStok(tampilkanNotifikasiSubmit = false) {
+
+        const rows =
+            wrapperBarang.querySelectorAll('.item-barang');
+
+        const barangGabungan = {};
+
+        let adaError = false;
+
+        let daftarError = [];
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | RESET ERROR SEBELUM MENGHITUNG ULANG
+        |--------------------------------------------------------------------------
+        */
+        rows.forEach(row => {
+
+            const inputQty =
+                row.querySelector('.input-jumlah');
+
+            const bubble =
+                row.querySelector('.qty-error');
+
+            inputQty.classList.remove(
+                'border-rose-500',
+                'ring-1',
+                'ring-rose-300'
+            );
+
+            if (bubble) {
+
+                bubble.classList.add('hidden');
+
+                bubble.innerText = '';
+            }
+        });
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | KELOMPOKKAN BARANG BERDASARKAN ID
+        |--------------------------------------------------------------------------
+        */
+        rows.forEach(row => {
+
+            const selectBarang =
+                row.querySelector('.select-barang');
+
+            const inputQty =
+                row.querySelector('.input-jumlah');
+
+            const barangId =
+                selectBarang.value;
+
+            const qty =
+                parseInt(inputQty.value) || 0;
+
+
+            // Barang belum dipilih
+            if (!barangId) {
+                return;
+            }
+
+
+            const selectedOption =
+                selectBarang.options[
+                    selectBarang.selectedIndex
+                ];
+
+
+            const stok =
+                parseInt(
+                    selectedOption.getAttribute('data-stok')
+                ) || 0;
+
+
+            const namaBarang =
+                selectedOption.textContent
+                    .replace(/\(Sisa:.*?\)/g, '')
+                    .trim();
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Jika barang belum pernah ditemukan
+            |--------------------------------------------------------------------------
+            */
+            if (!barangGabungan[barangId]) {
+
+                barangGabungan[barangId] = {
+
+                    nama: namaBarang,
+
+                    stok: stok,
+
+                    totalQty: 0,
+
+                    rows: []
+                };
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | TAMBAHKAN QTY
+            |--------------------------------------------------------------------------
+            |
+            | Misalnya:
+            |
+            | Semen = 5
+            | Semen = 4
+            |
+            | totalQty = 9
+            |
+            */
+            barangGabungan[barangId].totalQty += qty;
+
+            barangGabungan[barangId].rows.push(row);
+        });
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | BANDINGKAN TOTAL QTY DENGAN STOK
+        |--------------------------------------------------------------------------
+        */
+        Object.values(barangGabungan).forEach(barang => {
+
+            if (barang.totalQty > barang.stok) {
+
+                adaError = true;
+
+
+                const pesanBubble =
+                    `Qty ${barang.totalQty} melebihi stok ${barang.stok}`;
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | TAMPILKAN BUBBLE DI SEMUA BARIS BARANG YANG SAMA
+                |--------------------------------------------------------------------------
+                */
+                barang.rows.forEach(row => {
+
+                    const inputQty =
+                        row.querySelector('.input-jumlah');
+
+                    const bubble =
+                        row.querySelector('.qty-error');
+
+
+                    inputQty.classList.add(
+                        'border-rose-500',
+                        'ring-1',
+                        'ring-rose-300'
+                    );
+
+
+                    if (bubble) {
+
+                        bubble.innerText =
+                            pesanBubble;
+
+                        bubble.classList.remove('hidden');
+                    }
+                });
+
+
+                daftarError.push(
+                    `${barang.nama}: Qty ${barang.totalQty}, sedangkan stok hanya ${barang.stok}.`
+                );
+            }
+        });
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | NOTIFIKASI SAAT TOMBOL SIMPAN DITEKAN
+        |--------------------------------------------------------------------------
+        */
+        if (adaError) {
+
+            if (
+                tampilkanNotifikasiSubmit ||
+                !stokSubmitError.classList.contains('hidden')
+            ) {
+
+                stokSubmitError.innerText =
+                    "Stok tidak mencukupi. Periksa kembali jumlah barang:\n\n" +
+                    daftarError.join('\n');
+
+                stokSubmitError.classList.remove('hidden');
+            }
+
+            return false;
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | JIKA SUDAH VALID
+        |--------------------------------------------------------------------------
+        */
+        stokSubmitError.classList.add('hidden');
+
+        stokSubmitError.innerText = '';
+
+        return true;
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | SAAT BARANG DIPILIH
+    |--------------------------------------------------------------------------
+    */
+    wrapperBarang.addEventListener('change', function (e) {
+
+        if (e.target.classList.contains('select-barang')) {
+
+            const selectedOption =
+                e.target.options[e.target.selectedIndex];
+
+            const hargaJual =
+                selectedOption.getAttribute('data-harga');
+
+            const row =
+                e.target.closest('.item-barang');
+
+            const inputHarga =
+                row.querySelector('.input-harga');
+
+
+            if (hargaJual) {
+
+                inputHarga.value = hargaJual;
+
+            } else {
+
+                inputHarga.value = '';
+            }
+
+
+            kalkulasiKasir();
+
+            validasiStok();
+        }
+    });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | SAAT QTY / HARGA DIKETIK
+    |--------------------------------------------------------------------------
+    */
+    wrapperBarang.addEventListener('input', function (e) {
+
+        if (
+            e.target.classList.contains('input-jumlah') ||
+            e.target.classList.contains('input-harga')
+        ) {
+
+            kalkulasiKasir();
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | QTY LANGSUNG DIVALIDASI SAAT DIKETIK
+        |--------------------------------------------------------------------------
+        */
+        if (e.target.classList.contains('input-jumlah')) {
+
+            validasiStok();
+        }
+    });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | TAMBAH BARANG BARU
+    |--------------------------------------------------------------------------
+    */
+    btnTambahBarang.addEventListener('click', function () {
+
+        const barisBaru = `
+
+        <div class="grid grid-cols-12 gap-2 item-barang items-center bg-slate-50/50 p-2 rounded-xl border border-slate-100">
+
+            <div class="col-span-4">
+
+                <select
+                    name="barang[${itemIndex}][stok_barang_id]"
+                    required
+                    class="select-barang w-full border-slate-200 rounded-xl text-xs py-2 focus:ring-1 focus:ring-indigo-500">
+
+                    <option value="">
+                        -- Pilih Material --
+                    </option>
+
+                    @foreach($stokBarang as $sb)
+                        <option 
+                            value="{{ $sb->id }}" 
+                            data-harga="{{ $sb->harga_jual }}"
+                            data-stok="{{ $sb->stok }}">
+                            
+                            {{ $sb->nama_barang }} (Sisa: {{ $sb->stok }})
+                        </option>
+                    @endforeach
+
+                </select>
+
+            </div>
+
+
+            <div class="col-span-2">
+                <input 
+                    type="number"
+                    name="barang[${itemIndex}][jumlah]"
+                    required
+                    min="1"
+                    placeholder="Qty"
+                    class="input-jumlah w-full border-slate-200 rounded-xl text-xs py-2 text-center focus:ring-1 focus:ring-indigo-500">
+
+                <p class="qty-error hidden mt-1 px-2 py-1 text-[10px] leading-tight font-semibold text-rose-600 bg-rose-50 border border-rose-100 rounded-lg">
+                </p>
+            </div>
+
+
+            <div class="col-span-3">
+
+                <input
+                    type="number"
+                    name="barang[${itemIndex}][harga_satuan]"
+                    required
+                    min="0"
+                    placeholder="Harga (Rp)"
+                    class="input-harga w-full border-slate-200 rounded-xl text-xs py-2 bg-white focus:ring-1 focus:ring-indigo-500"
+                >
+
+            </div>
+
+
+            <div class="col-span-2">
+
+                <input
+                    type="text"
+                    readonly
+                    placeholder="Total"
+                    class="input-total-item w-full border-slate-100 bg-slate-100/80 text-slate-600 rounded-xl text-xs py-2 text-right font-bold focus:outline-none"
+                >
+
+            </div>
+
+
+            <div class="col-span-1 text-center">
+
+                <button
+                    type="button"
+                    class="btn-hapus-baris text-rose-400 hover:text-rose-600 text-lg font-bold transition-colors">
+                    &times;
+                </button>
+
+            </div>
+
+        </div>
+
+        `;
+
+
+        wrapperBarang.insertAdjacentHTML(
+            'beforeend',
+            barisBaru
+        );
+
+const barisTerbaru =
+    wrapperBarang.lastElementChild;
+
+const selectTerbaru =
+    barisTerbaru.querySelector(
+        '.select-barang'
+    );
+
+buatSearchableSelect(
+    selectTerbaru
+);
+
+        itemIndex++;
+    });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | HAPUS BARIS
+    |--------------------------------------------------------------------------
+    */
+    wrapperBarang.addEventListener('click', function (e) {
+
+        if (
+            e.target.classList.contains('btn-hapus-baris')
+        ) {
+
+            const totalBaris =
+                wrapperBarang.querySelectorAll('.item-barang').length;
+
+
+            if (totalBaris > 1) {
+
+                e.target
+                    .closest('.item-barang')
+                    .remove();
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | HITUNG ULANG SETELAH BARANG DIHAPUS
+                |--------------------------------------------------------------------------
+                */
+                kalkulasiKasir();
+
+                validasiStok();
+
+
+            } else {
+
+                alert(
+                    'Minimal harus ada 1 material di dalam nota!'
+                );
+            }
+        }
+    });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | VALIDASI KEDUA SAAT SIMPAN NOTA
+    |--------------------------------------------------------------------------
+    */
+    formNota.addEventListener('submit', function (e) {
+
+        const valid =
+            validasiStok(true);
+
+
+        if (!valid) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | JANGAN KIRIM FORM
+            |--------------------------------------------------------------------------
+            */
+            e.preventDefault();
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | ARAHKAN KE NOTIFIKASI
+            |--------------------------------------------------------------------------
+            */
+            stokSubmitError.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+            });
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | FOKUS KE QTY YANG BERMASALAH
+            |--------------------------------------------------------------------------
+            */
+            const inputError =
+                wrapperBarang.querySelector(
+                    '.input-jumlah.border-rose-500'
+                );
+
+
+            if (inputError) {
+
+                inputError.focus();
+            }
+
+            return false;
+        }
+    });
+
+});
+</script>
 </x-sidebar>

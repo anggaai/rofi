@@ -11,7 +11,7 @@ class BarangMasuk extends Model
     use HasFactory, SoftDeletes;
     protected $table = 'barang_masuk';
 
-    protected $fillable = ['stok_barang_id', 'jumlah', 'tanggal_masuk', 'supplier','deleted_at'];
+    protected $fillable = ['stok_barang_id', 'jumlah', 'tanggal_masuk','tanggal_pesan', 'supplier','deleted_at'];
 
     // Relasi ke tabel StokBarang
     public function stokBarang()

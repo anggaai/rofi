@@ -51,7 +51,12 @@ Route::middleware('auth')->group(function () {
     Route::put('/admin/users/{id}', [InventoryController::class, 'manajemenUpdate'])->name('manajemenupdate');
     Route::post('/nota-pembeli/{id}/restore',[InventoryController::class, 'restoreNotaPembeli'])->name('nota-pembeli.restore');
     Route::delete('/nota-pembeli/{id}/force-delete',[InventoryController::class, 'forceDeleteNotaPembeli'])->name('nota-pembeli.force-delete');
-});
+    Route::post('/stok/opname', [InventoryController::class, 'storeOpname'])->name('opname.store');
+    Route::delete('/stok/opname/{id}', [InventoryController::class, 'destroyOpname'])->name('opname.destroy');
+    Route::delete('/stok/opname/{id}/force-delete',[InventoryController::class, 'forceDeleteOpname'])->name('opname.force-delete');
+    Route::post('/stok/opname/{id}/restore', [InventoryController::class, 'restoreOpname'])->name('opname.restore');
+    Route::delete('/nota-pembeli/{id}/force-delete',[InventoryController::class, 'forceDeleteNotaPembeli'])->name('nota-pembeli.force-delete');
+    Route::post('/buffer/apply-all',[InventoryController::class, 'applyBufferMethodAll'])->name('buffer.apply.all');});
 
 
 

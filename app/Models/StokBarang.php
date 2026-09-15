@@ -13,8 +13,16 @@ class StokBarang extends Model
     protected $table = 'stok_barang';
     
     protected $fillable = [
-        'kode_barang', 'nama_barang', 'kategori', 
-        'stok', 'stok_minimum', 'harga_beli', 'harga_jual','gambar',
+        'kode_barang', 
+        'nama_barang', 
+        'kategori', 
+        'stok', 
+        'stok_minimum',
+        'metode_stok_minimum',
+        'stok_minimum_custom', 
+        'harga_beli', 
+        'harga_jual',
+        'gambar',
     ];
     protected static function boot()
 {
@@ -44,6 +52,10 @@ class StokBarang extends Model
         }
     });
 }
+public function stokOpnames()
+    {
+        return $this->hasMany(StokOpname::class, 'stok_barang_id');
+    }
     
-    protected $dates = ['deleted_at']; 
+protected $dates = ['deleted_at']; 
 }
