@@ -1,338 +1,1015 @@
-<div class="relative min-h-screen bg-no-repeat bg-fixed bg-cover bg-center z-0" 
-     style="background-image: linear-gradient(to bottom, rgba(30, 64, 175, 0.4), rgba(255, 255, 255, 0.8)), url('{{ asset('images/bgmustika.png') }}');">  
-    <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-[1px] pointer-events-none"></div>
+<div class="relative min-h-screen bg-gradient-to-b from-blue-300 via-blue-200 to-white z-0">
+
+  
 
     <x-sidebar>
+
         <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div class="space-y-6">
-                
-                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/90 backdrop-blur-md p-5 rounded-2xl shadow-sm border border-slate-200/50">
-                    <div>
-                        <span class="text-xs font-semibold text-indigo-600 uppercase tracking-widest">Inventory Barang Mustikajaya</span>
-                        <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight mt-1">Dashboard Utama</h1>
-                        <p class="text-slate-500 text-sm mt-1">Real-time data performa manajemen stok dan arus keuangan Anda.</p>
+
+            <div class="space-y-5">
+
+
+                {{-- ============================================================ --}}
+                {{-- HEADER --}}
+                {{-- ============================================================ --}}
+
+                <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+
+                    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+
+                        <div>
+
+                            <span class="text-xs font-bold text-indigo-600 uppercase tracking-[0.16em]">
+                                Inventory Barang Mustikajaya
+                            </span>
+
+                            <h1 class="text-2xl font-extrabold text-slate-900 mt-1">
+                                Dashboard Utama
+                            </h1>
+
+                            <p class="text-sm text-slate-500 mt-1">
+                                Ringkasan stok, penjualan, dan kondisi inventori secara otomatis.
+                            </p>
+
+                        </div>
+
+
+                        <div class="flex flex-wrap items-center gap-2">
+
+                            <div class="px-3 py-2 bg-slate-100 rounded-xl text-xs font-semibold text-slate-600">
+                                📅 {{ now()->translatedFormat('F Y') }}
+                            </div>
+
+                            <div
+                                class="px-3 py-2 rounded-xl text-xs font-bold
+                                {{ $stokKritisCount > 0
+                                    ? 'bg-rose-50 text-rose-700'
+                                    : 'bg-emerald-50 text-emerald-700' }}"
+                            >
+                                {{ $stokKritisCount > 0
+                                    ? '⚠️ ' . $stokKritisCount . ' stok kritis'
+                                    : '✅ Semua stok aman' }}
+                            </div>
+
+                        </div>
+
                     </div>
-                    <div class="flex items-center gap-3">
-                        <button class="flex items-center px-4 py-2 bg-white border border-slate-200 text-slate-700 font-medium text-sm rounded-xl hover:bg-slate-50 transition-all shadow-sm">
-                            <svg class="w-4 h-4 mr-2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 002-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                            {{ now()->translatedFormat('F Y') }}
-                        </button>
-                    </div>
+
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    <div class="bg-white/95 backdrop-blur-sm p-5 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
-                        <div class="absolute top-0 left-0 w-1.5 h-full bg-emerald-500"></div>
+
+                {{-- ============================================================ --}}
+                {{-- KEUANGAN + SMART INSIGHT --}}
+                {{-- ============================================================ --}}
+
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+
+
+                    {{-- ======================================================== --}}
+                    {{-- CARD UNTUNG / RUGI --}}
+                    {{-- ======================================================== --}}
+
+                    <div
+                        class="xl:col-span-2 rounded-2xl border shadow-sm overflow-hidden
+                        {{ $statusKeuangan === 'untung'
+                            ? 'bg-emerald-950 border-emerald-900'
+                            : ($statusKeuangan === 'rugi'
+                                ? 'bg-rose-950 border-rose-900'
+                                : 'bg-slate-900 border-slate-800') }}"
+                    >
+
+                        <div class="p-6">
+
+                            <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6 items-center">
+
+
+                                {{-- NILAI --}}
+                                <div>
+
+                                    <div class="flex flex-wrap items-center gap-2 mb-3">
+
+                                        <span
+                                            class="text-[11px] uppercase tracking-[0.16em] font-bold
+                                            {{ $statusKeuangan === 'untung'
+                                                ? 'text-emerald-300'
+                                                : ($statusKeuangan === 'rugi'
+                                                    ? 'text-rose-300'
+                                                    : 'text-slate-300') }}"
+                                        >
+                                            Estimasi Kinerja Inventory Bulan Ini
+                                        </span>
+
+
+                                        <span
+                                            class="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider
+                                            {{ $statusKeuangan === 'untung'
+                                                ? 'bg-emerald-400/15 text-emerald-300'
+                                                : ($statusKeuangan === 'rugi'
+                                                    ? 'bg-rose-400/15 text-rose-300'
+                                                    : 'bg-white/10 text-slate-300') }}"
+                                        >
+                                            @if($statusKeuangan === 'untung')
+                                                Untung
+                                            @elseif($statusKeuangan === 'rugi')
+                                                Rugi
+                                            @else
+                                                Seimbang
+                                            @endif
+                                        </span>
+
+                                    </div>
+
+
+                                    <h2 class="text-3xl md:text-4xl font-black text-white tracking-tight">
+
+                                        @if($hasilEstimasiBulanIni < 0)
+                                            -Rp {{ number_format(abs($hasilEstimasiBulanIni), 0, ',', '.') }}
+                                        @else
+                                            Rp {{ number_format($hasilEstimasiBulanIni, 0, ',', '.') }}
+                                        @endif
+
+                                    </h2>
+
+
+                                    <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3">
+
+                                        <span class="text-sm text-white/70">
+                                            Margin estimasi:
+                                            <strong class="text-white">
+                                                {{ number_format($marginEstimasiBulanIni, 1, ',', '.') }}%
+                                            </strong>
+                                        </span>
+
+
+                                        @if($perubahanHasilPersen !== null)
+
+                                            <span
+                                                class="text-xs font-bold
+                                                {{ $perubahanHasilNominal >= 0
+                                                    ? 'text-emerald-300'
+                                                    : 'text-rose-300' }}"
+                                            >
+                                                {{ $perubahanHasilNominal >= 0 ? '↗' : '↘' }}
+                                                {{ number_format(abs($perubahanHasilPersen), 1, ',', '.') }}%
+                                                dari bulan lalu
+                                            </span>
+
+                                        @else
+
+                                            <span class="text-xs text-white/50">
+                                                Belum ada pembanding bulan lalu
+                                            </span>
+
+                                        @endif
+
+                                    </div>
+
+
+                                    {{-- RINCIAN KEUANGAN --}}
+                                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
+
+                                        <div class="bg-white/10 rounded-xl p-3">
+                                            <p class="text-[10px] uppercase tracking-wider text-white/55">
+                                                Omzet
+                                            </p>
+
+                                            <p class="text-sm font-extrabold text-white mt-1">
+                                                Rp {{ number_format($totalOmzetBulanIni, 0, ',', '.') }}
+                                            </p>
+                                        </div>
+
+
+                                        <div class="bg-white/10 rounded-xl p-3">
+                                            <p class="text-[10px] uppercase tracking-wider text-white/55">
+                                                Modal Terjual
+                                            </p>
+
+                                            <p class="text-sm font-extrabold text-white mt-1">
+                                                Rp {{ number_format($modalTerjualBulanIni, 0, ',', '.') }}
+                                            </p>
+                                        </div>
+
+
+                                        <div class="bg-white/10 rounded-xl p-3">
+                                            <p class="text-[10px] uppercase tracking-wider text-white/55">
+                                                Laba Kotor
+                                            </p>
+
+                                            <p class="text-sm font-extrabold text-white mt-1">
+                                                Rp {{ number_format($labaKotorBulanIni, 0, ',', '.') }}
+                                            </p>
+                                        </div>
+
+
+                                        <div class="bg-white/10 rounded-xl p-3">
+                                            <p class="text-[10px] uppercase tracking-wider text-white/55">
+                                                Pengurangan Opname
+                                            </p>
+
+                                            <p class="text-sm font-extrabold text-white mt-1">
+                                                Rp {{ number_format($nilaiPenguranganOpnameBulanIni, 0, ',', '.') }}
+                                            </p>
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+
+                                {{-- MASCOT --}}
+                                <div class="flex md:flex-col items-center md:items-end justify-center gap-3">
+
+                                    @if($statusKeuangan === 'untung')
+
+                                        <div
+                                            class="mascot-profit text-6xl md:text-7xl select-none"
+                                            aria-label="Kondisi untung"
+                                        >
+                                            💪
+                                        </div>
+
+                                        <div class="md:text-right">
+                                            <p class="text-sm font-bold text-emerald-200">
+                                                Mantap, tetap jaga ritmenya!
+                                            </p>
+
+                                            <p class="text-xs text-emerald-100/60 mt-1 max-w-[190px]">
+                                                Margin penjualan masih mampu menutup penyesuaian stok bulan ini.
+                                            </p>
+                                        </div>
+
+                                    @elseif($statusKeuangan === 'rugi')
+
+                                        <div
+                                            class="mascot-loss text-6xl md:text-7xl select-none"
+                                            aria-label="Kondisi rugi"
+                                        >
+                                            😮‍💨
+                                        </div>
+
+                                        <div class="md:text-right">
+                                            <p class="text-sm font-bold text-rose-200">
+                                                Belum ideal, tapi masih bisa dibenahi.
+                                            </p>
+
+                                            <p class="text-xs text-rose-100/60 mt-1 max-w-[200px]">
+                                                Cek harga jual, margin barang, dan pengurangan stok opname.
+                                            </p>
+                                        </div>
+
+                                    @else
+
+                                        <div
+                                            class="mascot-neutral text-6xl md:text-7xl select-none"
+                                            aria-label="Kondisi seimbang"
+                                        >
+                                            🙂
+                                        </div>
+
+                                        <div class="md:text-right">
+                                            <p class="text-sm font-bold text-slate-200">
+                                                Posisi masih seimbang.
+                                            </p>
+
+                                            <p class="text-xs text-slate-300/60 mt-1 max-w-[190px]">
+                                                Pantau transaksi berikutnya untuk melihat arah performa bulan ini.
+                                            </p>
+                                        </div>
+
+                                    @endif
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    {{-- ======================================================== --}}
+                    {{-- SMART INSIGHT --}}
+                    {{-- ======================================================== --}}
+
+                    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+
                         <div class="flex items-center justify-between">
+
                             <div>
-                                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Barang Masuk (Bulan Ini)</p>
-                                <h3 class="text-2xl font-bold text-slate-800 mt-1">{{ number_format($totalMasukBulanIni) }} <span class="text-sm font-medium text-slate-400">Unit</span></h3>
-                                <span class="text-xs text-slate-400 font-medium inline-flex items-center mt-1">
-                                    Total SKU: <strong class="ml-1">{{ $totalSku }}</strong>
-                                </span>
+                                <p class="text-[10px] uppercase tracking-[0.15em] font-bold text-indigo-500">
+                                    Smart Insight
+                                </p>
+
+                                <h3 class="text-lg font-extrabold text-slate-800 mt-1">
+                                    Ringkasan Pintar
+                                </h3>
                             </div>
-                            <div class="p-3 bg-emerald-50 rounded-xl text-emerald-600">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg>
+
+                            <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-xl">
+                                ✨
                             </div>
+
                         </div>
+
+
+                        <div class="space-y-3 mt-5">
+
+                            {{-- PRODUK TERLARIS --}}
+                            <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                    Produk terlaris
+                                </p>
+
+                                @if($produkTerlaris)
+
+                                    <p class="text-sm font-extrabold text-slate-800 mt-1">
+                                        {{ $produkTerlaris->nama_barang }}
+                                    </p>
+
+                                    <p class="text-xs text-slate-500 mt-1">
+                                        {{ number_format($produkTerlaris->total_terjual) }} unit terjual bulan ini
+                                    </p>
+
+                                @else
+
+                                    <p class="text-sm font-semibold text-slate-500 mt-1">
+                                        Belum ada penjualan bulan ini.
+                                    </p>
+
+                                @endif
+
+                            </div>
+
+
+                            {{-- ARUS BARANG --}}
+                            <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                    Arus persediaan
+                                </p>
+
+                                @if($arusBersihBulanIni > 0)
+
+                                    <p class="text-sm font-bold text-emerald-700 mt-1">
+                                        +{{ number_format($arusBersihBulanIni) }} unit
+                                    </p>
+
+                                    <p class="text-xs text-slate-500 mt-1">
+                                        Barang masuk lebih besar daripada barang keluar.
+                                    </p>
+
+                                @elseif($arusBersihBulanIni < 0)
+
+                                    <p class="text-sm font-bold text-amber-700 mt-1">
+                                        {{ number_format($arusBersihBulanIni) }} unit
+                                    </p>
+
+                                    <p class="text-xs text-slate-500 mt-1">
+                                        Barang keluar lebih besar daripada pasokan masuk.
+                                    </p>
+
+                                @else
+
+                                    <p class="text-sm font-bold text-slate-700 mt-1">
+                                        Seimbang
+                                    </p>
+
+                                    <p class="text-xs text-slate-500 mt-1">
+                                        Jumlah barang masuk dan keluar sama.
+                                    </p>
+
+                                @endif
+
+                            </div>
+
+
+                            {{-- STATUS BUFFER --}}
+                            <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+
+                                <div class="flex items-center justify-between gap-3">
+
+                                    <div>
+                                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                            Kondisi stok
+                                        </p>
+
+                                        <p class="text-sm font-extrabold text-slate-800 mt-1">
+                                            {{ $persentaseStokAman }}% aman
+                                        </p>
+                                    </div>
+
+                                    <div
+                                        class="text-2xl"
+                                        aria-hidden="true"
+                                    >
+                                        {{ $stokKritisCount > 0 ? '⚠️' : '✅' }}
+                                    </div>
+
+                                </div>
+
+
+                                <div class="h-2 bg-slate-200 rounded-full overflow-hidden mt-3">
+
+                                    <div
+                                        class="h-full rounded-full {{ $stokKritisCount > 0 ? 'bg-amber-500' : 'bg-emerald-500' }}"
+                                        style="width: {{ min(100, max(0, $persentaseStokAman)) }}%"
+                                    ></div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
                     </div>
 
-                    <div class="bg-white/95 backdrop-blur-sm p-5 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
-                        <div class="absolute top-0 left-0 w-1.5 h-full bg-rose-500"></div>
-                        <div class="flex items-center justify-between">
+                </div>
+
+
+                {{-- ============================================================ --}}
+                {{-- SATU CARD RINGKASAN INVENTORI --}}
+                {{-- ============================================================ --}}
+
+                <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+
+                    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+
+                        <div>
+                            <p class="text-[10px] uppercase tracking-wider font-bold text-slate-400">
+                                Barang Masuk
+                            </p>
+
+                            <p class="text-xl font-black text-emerald-600 mt-1">
+                                {{ number_format($totalMasukBulanIni) }}
+                            </p>
+
+                            <p class="text-xs text-slate-400">unit bulan ini</p>
+                        </div>
+
+
+                        <div>
+                            <p class="text-[10px] uppercase tracking-wider font-bold text-slate-400">
+                                Barang Keluar
+                            </p>
+
+                            <p class="text-xl font-black text-rose-600 mt-1">
+                                {{ number_format($totalKeluarBulanIni) }}
+                            </p>
+
+                            <p class="text-xs text-slate-400">unit bulan ini</p>
+                        </div>
+
+
+                        <div>
+                            <p class="text-[10px] uppercase tracking-wider font-bold text-slate-400">
+                                Nilai Stok
+                            </p>
+
+                            <p class="text-lg font-black text-slate-800 mt-1">
+                                Rp {{ number_format($totalNilaiStok, 0, ',', '.') }}
+                            </p>
+
+                            <p class="text-xs text-slate-400">{{ $totalSku }} SKU aktif</p>
+                        </div>
+
+
+                        <div>
+                            <p class="text-[10px] uppercase tracking-wider font-bold text-slate-400">
+                                Transaksi
+                            </p>
+
+                            <p class="text-xl font-black text-indigo-600 mt-1">
+                                {{ number_format($transaksiBulanIni) }}
+                            </p>
+
+                            <p class="text-xs text-slate-400">nota bulan ini</p>
+                        </div>
+
+
+                        <div>
+                            <p class="text-[10px] uppercase tracking-wider font-bold text-slate-400">
+                                Rata-rata Nota
+                            </p>
+
+                            <p class="text-lg font-black text-slate-800 mt-1">
+                                Rp {{ number_format($rataRataNotaBulanIni, 0, ',', '.') }}
+                            </p>
+
+                            <p class="text-xs text-slate-400">per transaksi</p>
+                        </div>
+
+
+                        <div>
+                            <p class="text-[10px] uppercase tracking-wider font-bold text-slate-400">
+                                Keluar : Masuk
+                            </p>
+
+                            <p class="text-xl font-black text-slate-800 mt-1">
+
+                                @if($rasioKeluarTerhadapMasuk !== null)
+
+                                    {{ number_format($rasioKeluarTerhadapMasuk, 1, ',', '.') }}%
+
+                                @else
+
+                                    -
+
+                                @endif
+
+                            </p>
+
+                            <p class="text-xs text-slate-400">rasio bulan ini</p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                {{-- ============================================================ --}}
+                {{-- GRAFIK RINGKAS --}}
+                {{-- ============================================================ --}}
+
+                <div class="dashboard-lazy-section grid grid-cols-1 xl:grid-cols-2 gap-5">
+
+                    {{-- ARUS BARANG --}}
+                    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+
+                        <div class="flex items-center justify-between gap-4">
+
                             <div>
-                                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Barang Keluar (Bulan Ini)</p>
-                                <h3 class="text-2xl font-bold text-slate-800 mt-1">{{ number_format($totalKeluarBulanIni) }} <span class="text-sm font-medium text-slate-400">Unit</span></h3>
-                                <span class="text-xs text-slate-400 font-medium inline-flex items-center mt-1">Logistik aktif di gudang</span>
+                                <h3 class="font-extrabold text-slate-800">
+                                    Arus Barang
+                                </h3>
+
+                                <p class="text-xs text-slate-400 mt-1">
+                                    Barang masuk dan keluar selama 6 bulan
+                                </p>
                             </div>
-                            <div class="p-3 bg-rose-50 rounded-xl text-rose-600">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg>
-                            </div>
+
+                            <span class="text-xl">
+                                📦
+                            </span>
+
                         </div>
+
+
+                        <div
+                            id="chartArusBarang"
+                            class="mt-3"
+                            style="width:100%; height:235px;"
+                        ></div>
+
                     </div>
 
-                    <div class="bg-gradient-to-br from-slate-900 to-indigo-950 p-5 rounded-xl border border-slate-800 shadow-xl relative overflow-hidden">
-                        <div class="absolute -right-5 -bottom-5 w-28 h-28 bg-indigo-500/10 rounded-full blur-2xl"></div>
-                        <div class="flex items-center justify-between relative z-10">
+
+                    {{-- PENJUALAN --}}
+                    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+
+                        <div class="flex items-center justify-between gap-4">
+
                             <div>
-                                <p class="text-xs font-semibold text-indigo-300 uppercase tracking-wider">Total Nilai Stok</p>
-                                <h3 class="text-xl font-bold text-white mt-1">Rp {{ number_format($totalNilaiStok, 0, ',', '.') }}</h3>
-                                <span class="text-xs text-indigo-200 font-medium bg-white/10 px-2 py-0.5 rounded-md inline-flex items-center mt-1">
-                                    Omzet Bulan Ini: Rp {{ number_format($totalOmzetBulanIni, 0, ',', '.') }}
-                                </span>
+                                <h3 class="font-extrabold text-slate-800">
+                                    Omzet Penjualan
+                                </h3>
+
+                                <p class="text-xs text-slate-400 mt-1">
+                                    Omzet bulanan dalam juta rupiah
+                                </p>
                             </div>
-                            <div class="p-3 bg-white/10 rounded-xl text-indigo-400">
-                                <svg class="w-5 h-5 text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+
+                            <span class="text-xl">
+                                💰
+                            </span>
+
+                        </div>
+
+
+                        <div
+                            id="chartPenjualan"
+                            class="mt-3"
+                            style="width:100%; height:235px;"
+                        ></div>
+
+                    </div>
+
+                </div>
+
+
+                {{-- ============================================================ --}}
+                {{-- STOK KRITIS + CATATAN --}}
+                {{-- ============================================================ --}}
+
+                <div class="dashboard-lazy-section grid grid-cols-1 xl:grid-cols-3 gap-5">
+
+
+                    {{-- STOK KRITIS --}}
+                    <div class="xl:col-span-2 bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+
+                        <div class="p-5 border-b border-slate-100 flex items-center justify-between gap-4">
+
+                            <div>
+
+                                <h3 class="font-extrabold text-slate-800">
+                                    Stok Perlu Perhatian
+                                </h3>
+
+                                <p class="text-xs text-slate-400 mt-1">
+                                    Maksimal 5 barang yang berada pada atau di bawah stok minimum
+                                </p>
+
                             </div>
+
+
+                            <a
+                                href="{{ route('buffer.index') }}"
+                                class="text-xs font-bold text-indigo-600 hover:text-indigo-700"
+                            >
+                                Buka Buffer →
+                            </a>
+
                         </div>
+
+
+                        @forelse($stokKritis as $barang)
+
+                            @php
+                                $kekurangan = max(
+                                    0,
+                                    $barang->stok_minimum - $barang->stok
+                                );
+                            @endphp
+
+                            <div class="px-5 py-3 border-b border-slate-100 last:border-b-0">
+
+                                <div class="flex items-center justify-between gap-4">
+
+                                    <div class="min-w-0">
+
+                                        <p class="text-sm font-bold text-slate-700 truncate">
+                                            {{ $barang->nama_barang }}
+                                        </p>
+
+                                        <p class="text-[11px] text-slate-400 mt-0.5">
+                                            {{ $barang->kode_barang }}
+                                        </p>
+
+                                    </div>
+
+
+                                    <div class="text-right shrink-0">
+
+                                        <p class="text-sm font-extrabold text-rose-600">
+                                            {{ number_format($barang->stok) }} unit
+                                        </p>
+
+                                        <p class="text-[11px] text-slate-400">
+                                            minimum {{ number_format($barang->stok_minimum) }}
+
+                                            @if($kekurangan > 0)
+                                                • kurang {{ number_format($kekurangan) }}
+                                            @endif
+                                        </p>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        @empty
+
+                            <div class="p-8 text-center">
+
+                                <div class="text-4xl">
+                                    ✅
+                                </div>
+
+                                <p class="text-sm font-bold text-emerald-700 mt-2">
+                                    Tidak ada stok kritis.
+                                </p>
+
+                                <p class="text-xs text-slate-400 mt-1">
+                                    Seluruh barang masih berada di atas stok minimum.
+                                </p>
+
+                            </div>
+
+                        @endforelse
+
                     </div>
+
+
+                    {{-- CATATAN KEUANGAN --}}
+                    <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+
+                        <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-xl">
+                            💡
+                        </div>
+
+                        <h3 class="font-extrabold text-amber-950 mt-4">
+                            Cara membaca untung/rugi
+                        </h3>
+
+                        <p class="text-xs text-amber-900/70 leading-relaxed mt-2">
+                            Dashboard menghitung estimasi dari margin penjualan lalu dikurangi nilai stok
+                            yang berkurang melalui opname.
+                        </p>
+
+                        <div class="mt-4 p-3 bg-white/70 rounded-xl border border-amber-200">
+
+                            <p class="text-[11px] text-amber-900/70 leading-relaxed">
+                                Perhitungan keuntungan dan kerugian dilakukan secara otomatis berdasarkan
+                                data transaksi penjualan, harga beli barang, serta penyesuaian stok yang
+                                tersimpan pada sistem. Informasi ini digunakan untuk membantu memantau
+                                kondisi keuangan dan kinerja persediaan secara berkala.
+                            </p>
+
+                        </div>
+
+                    </div>
+
                 </div>
 
-                <div class="bg-white/95 backdrop-blur-sm p-5 rounded-xl border border-slate-200 shadow-sm">
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <h3 class="font-bold text-slate-800 text-lg">📦 Barang Masuk</h3>
-                            <p class="text-xs text-slate-400">Trend volume barang masuk per periode</p>
-                        </div>
-                        <div class="px-3 py-1.5 bg-emerald-50 rounded-lg text-emerald-600 text-xs font-semibold">
-                            Total Masuk: {{ array_sum($masukData) }} pcs
-                        </div>
-                    </div>
-                    <div id="chartBarangMasuk" style="width:100%; height:320px;"></div>
-                </div>
 
-                <div class="bg-white/95 backdrop-blur-sm p-5 rounded-xl border border-slate-200 shadow-sm">
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <h3 class="font-bold text-slate-800 text-lg">🚚 Barang Keluar</h3>
-                            <p class="text-xs text-slate-400">Trend volume barang keluar per periode</p>
-                        </div>
-                        <div class="px-3 py-1.5 bg-rose-50 rounded-lg text-rose-600 text-xs font-semibold">
-                            Total Keluar: {{ array_sum($keluarData) }} pcs
-                        </div>
-                    </div>
-                    <div id="chartBarangKeluar" style="width:100%; height:320px;"></div>
-                </div>
+            </div>
 
-                <div class="bg-white/95 backdrop-blur-sm p-5 rounded-xl border border-slate-200 shadow-sm">
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <h3 class="font-bold text-slate-800 text-lg">💰 Penjualan Per Bulan</h3>
-                            <p class="text-xs text-slate-400">Omzet penjualan dalam Juta Rupiah</p>
-                        </div>
-                        <div class="px-3 py-1.5 bg-indigo-50 rounded-lg text-indigo-600 text-xs font-semibold">
-                            Total Omzet: Rp {{ array_sum($penjualanData) }} Juta
-                        </div>
-                    </div>
-                    <div id="chartPenjualan" style="width:100%; height:320px;"></div>
-                </div>
-
-                {{-- <div class="bg-white/95 backdrop-blur-sm p-5 rounded-xl border border-slate-200 shadow-sm">
-                    <div class="mb-4">
-                        <h3 class="font-bold text-slate-800 text-lg">📊 Kategori Stok</h3>
-                        <p class="text-xs text-slate-400">Penyebaran produk berdasarkan kategori</p>
-                    </div>
-                    <div id="chartKategori" style="width:100%; height:320px;"></div>
-                </div> --}}
-
-            </div> 
         </div>
+
     </x-sidebar>
+
 </div>
-<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+
+{{-- ============================================================ --}}
+{{-- APEXCHARTS --}}
+{{-- ============================================================ --}}
+
+<script
+    src="https://cdn.jsdelivr.net/npm/apexcharts"
+    defer
+></script>
+
+
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
+    document.addEventListener('DOMContentLoaded', function () {
 
-        // ========== CHART 1: BARANG MASUK (AREA CHART) ==========
-        var optionsMasuk = {
-            chart: {
-                type: 'area',
-                height: 280,
-                toolbar: { show: false },
-                fontFamily: 'Inter, sans-serif',
-                background: 'transparent'
-            },
-            colors: ['#10b981'],
-            stroke: { width: 3, curve: 'smooth', lineCap: 'round' },
-            fill: {
-                type: 'gradient',
-                gradient: {
-                    shade: 'light',
-                    type: 'vertical',
-                    opacityFrom: 0.35,
-                    opacityTo: 0.05,
-                    stops: [0, 100]
-                }
-            },
-            markers: {
-                size: 6,
-                colors: ['#ffffff'],
-                strokeColors: '#10b981',
-                strokeWidth: 2.5,
-                hover: { size: 8 }
-            },
-            dataLabels: { enabled: false },
-            grid: {
-                strokeDashArray: 5,
-                borderColor: '#e2e8f0',
-                padding: { top: 10, right: 15, bottom: 5, left: 10 }
-            },
-            series: [{ name: 'Barang Masuk', data: @json($masukData) }],
-            xaxis: {
-                categories: @json($periodeLabels),
-                axisBorder: { show: false },
-                axisTicks: { show: false },
-                labels: { style: { colors: '#64748b', fontWeight: 500, fontSize: '11px' } }
-            },
-            yaxis: {
-                labels: {
-                    style: { colors: '#64748b', fontWeight: 500, fontSize: '11px' },
-                    formatter: function(val) { return Math.round(val) + ' pcs'; }
-                }
-            },
-            tooltip: {
-                theme: 'light',
-                y: { formatter: function(val) { return val + ' pcs'; } }
-            }
-        };
-        new ApexCharts(document.querySelector("#chartBarangMasuk"), optionsMasuk).render();
+        /*
+        |--------------------------------------------------------------------------
+        | Jika ApexCharts gagal dimuat, dashboard lain tetap bisa dipakai.
+        |--------------------------------------------------------------------------
+        */
+        if (typeof ApexCharts === 'undefined') {
+            console.warn('ApexCharts tidak berhasil dimuat.');
+            return;
+        }
 
-        // ========== CHART 2: BARANG KELUAR (AREA CHART) ==========
-        var optionsKeluar = {
-            chart: {
-                type: 'area',
-                height: 280,
-                toolbar: { show: false },
-                fontFamily: 'Inter, sans-serif',
-                background: 'transparent'
-            },
-            colors: ['#f43f5e'],
-            stroke: { width: 3, curve: 'smooth', lineCap: 'round' },
-            fill: {
-                type: 'gradient',
-                gradient: {
-                    shade: 'light',
-                    type: 'vertical',
-                    opacityFrom: 0.35,
-                    opacityTo: 0.05,
-                    stops: [0, 100]
-                }
-            },
-            markers: {
-                size: 6,
-                colors: ['#ffffff'],
-                strokeColors: '#f43f5e',
-                strokeWidth: 2.5,
-                hover: { size: 8 }
-            },
-            dataLabels: { enabled: false },
-            grid: {
-                strokeDashArray: 5,
-                borderColor: '#e2e8f0',
-                padding: { top: 10, right: 15, bottom: 5, left: 10 }
-            },
-            series: [{ name: 'Barang Keluar', data: @json($keluarData) }],
-            xaxis: {
-                categories: @json($periodeLabels),
-                axisBorder: { show: false },
-                axisTicks: { show: false },
-                labels: { style: { colors: '#64748b', fontWeight: 500, fontSize: '11px' } }
-            },
-            yaxis: {
-                labels: {
-                    style: { colors: '#64748b', fontWeight: 500, fontSize: '11px' },
-                    formatter: function(val) { return Math.round(val) + ' pcs'; }
-                }
-            },
-            tooltip: {
-                theme: 'light',
-                y: { formatter: function(val) { return val + ' pcs'; } }
-            }
-        };
-        new ApexCharts(document.querySelector("#chartBarangKeluar"), optionsKeluar).render();
 
-        // ========== CHART 3: PENJUALAN (BAR CHART) ==========
-        var optionsPenjualan = {
-            chart: {
-                type: 'bar',
-                height: 280,
-                toolbar: { show: false },
-                fontFamily: 'Inter, sans-serif',
-                background: 'transparent'
-            },
-            colors: ['#6366f1'],
-            plotOptions: {
-                bar: {
-                    borderRadius: 8,
-                    columnWidth: '50%',
-                    dataLabels: { position: 'top' }
-                }
-            },
-            dataLabels: {
-                enabled: true,
-                offsetY: -12,
-                style: { fontSize: '11px', colors: ['#6366f1'], fontWeight: 600 },
-                formatter: function(val) { return 'Rp ' + val + 'M'; }
-            },
-            grid: {
-                strokeDashArray: 5,
-                borderColor: '#e2e8f0',
-                padding: { top: 25, right: 15, bottom: 5, left: 10 }
-            },
-            series: [{ name: 'Omzet', data: @json($penjualanData) }],
-            xaxis: {
-                categories: @json($periodeLabels),
-                axisBorder: { show: false },
-                axisTicks: { show: false },
-                labels: { style: { colors: '#64748b', fontWeight: 500, fontSize: '11px' } }
-            },
-            yaxis: {
-                labels: {
-                    style: { colors: '#64748b', fontWeight: 500, fontSize: '11px' },
-                    formatter: function(val) { return "Rp " + val + "M"; }
-                }
-            },
-            tooltip: {
-                y: { formatter: function(val) { return "Rp " + val + " Juta"; } }
-            }
-        };
-        new ApexCharts(document.querySelector("#chartPenjualan"), optionsPenjualan).render();
+        /*
+        |--------------------------------------------------------------------------
+        | GRAFIK ARUS BARANG
+        |--------------------------------------------------------------------------
+        */
+        const chartArusElement =
+            document.querySelector('#chartArusBarang');
 
-        // ========== CHART 4: DONUT KATEGORI ==========
-        var optionsKategori = {
-            chart: {
-                type: 'donut',
-                height: 280,
-                fontFamily: 'Inter, sans-serif'
-            },
-            colors: ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#8b5cf6', '#06b6d4', '#84cc16'],
-            labels: @json($kategoriLabels),
-            series: @json($stokData),
-            dataLabels: { enabled: false },
-            legend: {
-                position: 'bottom',
-                fontSize: '11px',
-                fontWeight: 500,
-                labels: { colors: '#475569' },
-                markers: { width: 10, height: 10, radius: 10 },
-                itemMargin: { horizontal: 8, vertical: 5 }
-            },
-            plotOptions: {
-                pie: {
-                    donut: {
-                        size: '68%',
-                        labels: {
-                            show: true,
-                            total: {
-                                show: true,
-                                label: 'Total Stok',
-                                color: '#64748b',
-                                fontSize: '11px',
-                                fontWeight: 600,
-                                formatter: function(w) {
-                                    let total = w.globals.seriesTotals.reduce((a, b) => a + b, 0);
-                                    return total.toLocaleString('id-ID') + ' pcs';
-                                }
-                            },
-                            value: {
-                                fontSize: '18px',
-                                fontWeight: 700,
-                                color: '#1e293b',
-                                formatter: function(val) { return val.toLocaleString('id-ID'); }
-                            }
+
+        if (chartArusElement) {
+
+            const optionsArusBarang = {
+
+                chart: {
+                    type: 'line',
+                    height: 220,
+                    toolbar: {
+                        show: false
+                    },
+                    zoom: {
+                        enabled: false
+                    },
+                    animations: {
+                        enabled: false
+                    },
+                    fontFamily: 'Inter, sans-serif',
+                    background: 'transparent'
+                },
+
+                series: [
+                    {
+                        name: 'Barang Masuk',
+                        data: @json($masukData)
+                    },
+                    {
+                        name: 'Barang Keluar',
+                        data: @json($keluarData)
+                    }
+                ],
+
+                colors: [
+                    '#10b981',
+                    '#f43f5e'
+                ],
+
+                stroke: {
+                    width: 2.5,
+                    curve: 'smooth',
+                    lineCap: 'round'
+                },
+
+                markers: {
+                    size: 3,
+                    strokeWidth: 2,
+                    strokeColors: '#ffffff',
+                    hover: {
+                        size: 5
+                    }
+                },
+
+                dataLabels: {
+                    enabled: false
+                },
+
+                grid: {
+                    strokeDashArray: 4,
+                    borderColor: '#e2e8f0',
+                    padding: {
+                        top: 0,
+                        right: 5,
+                        bottom: 0,
+                        left: 5
+                    }
+                },
+
+                xaxis: {
+                    categories: @json($periodeLabels),
+                    axisBorder: {
+                        show: false
+                    },
+                    axisTicks: {
+                        show: false
+                    },
+                    labels: {
+                        style: {
+                            colors: '#64748b',
+                            fontSize: '10px'
+                        }
+                    }
+                },
+
+                yaxis: {
+                    min: 0,
+                    forceNiceScale: true,
+                    labels: {
+                        style: {
+                            colors: '#64748b',
+                            fontSize: '10px'
+                        },
+                        formatter: function (value) {
+                            return Math.round(value);
+                        }
+                    }
+                },
+
+                legend: {
+                    show: true,
+                    position: 'top',
+                    horizontalAlign: 'right',
+                    fontSize: '11px',
+                    markers: {
+                        width: 8,
+                        height: 8,
+                        radius: 8
+                    }
+                },
+
+                tooltip: {
+                    shared: true,
+                    intersect: false,
+                    theme: 'light',
+                    y: {
+                        formatter: function (value) {
+                            return Number(value).toLocaleString('id-ID') + ' unit';
                         }
                     }
                 }
-            },
-            responsive: [{
-                breakpoint: 480,
-                options: {
-                    chart: { height: 260 },
-                    legend: { position: 'bottom', fontSize: '10px' }
+
+            };
+
+
+            new ApexCharts(
+                chartArusElement,
+                optionsArusBarang
+            ).render();
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | GRAFIK OMZET
+        |--------------------------------------------------------------------------
+        */
+        const chartPenjualanElement =
+            document.querySelector('#chartPenjualan');
+
+
+        if (chartPenjualanElement) {
+
+            const optionsPenjualan = {
+
+                chart: {
+                    type: 'bar',
+                    height: 220,
+                    toolbar: {
+                        show: false
+                    },
+                    animations: {
+                        enabled: false
+                    },
+                    fontFamily: 'Inter, sans-serif',
+                    background: 'transparent'
+                },
+
+                series: [
+                    {
+                        name: 'Omzet',
+                        data: @json($penjualanData)
+                    }
+                ],
+
+                colors: [
+                    '#6366f1'
+                ],
+
+                plotOptions: {
+                    bar: {
+                        borderRadius: 5,
+                        columnWidth: '44%'
+                    }
+                },
+
+                dataLabels: {
+                    enabled: false
+                },
+
+                grid: {
+                    strokeDashArray: 4,
+                    borderColor: '#e2e8f0',
+                    padding: {
+                        top: 0,
+                        right: 5,
+                        bottom: 0,
+                        left: 5
+                    }
+                },
+
+                xaxis: {
+                    categories: @json($periodeLabels),
+                    axisBorder: {
+                        show: false
+                    },
+                    axisTicks: {
+                        show: false
+                    },
+                    labels: {
+                        style: {
+                            colors: '#64748b',
+                            fontSize: '10px'
+                        }
+                    }
+                },
+
+                yaxis: {
+                    min: 0,
+                    labels: {
+                        style: {
+                            colors: '#64748b',
+                            fontSize: '10px'
+                        },
+                        formatter: function (value) {
+                            return 'Rp ' + value + 'M';
+                        }
+                    }
+                },
+
+                tooltip: {
+                    y: {
+                        formatter: function (value) {
+                            return 'Rp ' + value + ' Juta';
+                        }
+                    }
                 }
-            }]
-        };
-        new ApexCharts(document.querySelector("#chartKategori"), optionsKategori).render();
+
+            };
+
+
+            new ApexCharts(
+                chartPenjualanElement,
+                optionsPenjualan
+            ).render();
+
+        }
 
     });
 </script>

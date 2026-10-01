@@ -749,11 +749,138 @@ class InventoryController extends Controller
     ));
 }
 
-    public function barangMasuk()
+   public function barangMasuk(Request $request)
 {
-    $barangMasuk = BarangMasuk::with('stokBarang')->latest()->get();
+    $search = $request->input('search');
+    $tanggal = $request->input('tanggal');
+
+    /*
+    |--------------------------------------------------------------------------
+    | DATA TABEL BARANG MASUK
+    |--------------------------------------------------------------------------
+    */
+    $query = BarangMasuk::with('stokBarang')
+        ->latest('tanggal_masuk');
+
+
+    if ($search) {
+
+        $query->where(function ($q) use ($search) {
+
+            $q->where('supplier', 'like', '%' . $search . '%')
+
+                ->orWhereHas('stokBarang', function ($barang) use ($search) {
+
+                    $barang
+                        ->where('nama_barang', 'like', '%' . $search . '%')
+                        ->orWhere('kode_barang', 'like', '%' . $search . '%')
+                        ->orWhere('kategori', 'like', '%' . $search . '%');
+
+                });
+
+        });
+
+    }
+
+
+    if ($tanggal) {
+
+        $query->whereDate('tanggal_masuk', $tanggal);
+
+    }
+
+
+    $barangMasuk = $query
+        ->paginate(10)
+        ->withQueryString();
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | DATA MATERIAL UNTUK FORM INPUT
+    |--------------------------------------------------------------------------
+    */
     $stokBarang = StokBarang::orderBy('nama_barang')->get();
-    return view('barang-masuk', compact('barangMasuk', 'stokBarang'));
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | STATISTIK BULAN INI
+    |--------------------------------------------------------------------------
+    */
+
+    $awalBulan = now()->copy()->startOfMonth();
+    $akhirBulan = now()->copy()->endOfMonth();
+
+
+    // Total unit barang masuk bulan ini
+    $totalMasukBulanIni = BarangMasuk::whereBetween(
+        'tanggal_masuk',
+        [$awalBulan, $akhirBulan]
+    )->sum('jumlah');
+
+
+    // Jumlah transaksi/log barang masuk bulan ini
+    $totalTransaksiMasuk = BarangMasuk::whereBetween(
+        'tanggal_masuk',
+        [$awalBulan, $akhirBulan]
+    )->count();
+
+
+    // Supplier aktif bulan ini
+    $supplierAktif = BarangMasuk::whereBetween(
+            'tanggal_masuk',
+            [$awalBulan, $akhirBulan]
+        )
+        ->whereNotNull('supplier')
+        ->where('supplier', '!=', '')
+        ->distinct()
+        ->count('supplier');
+
+
+    // Rata-rata jumlah barang per transaksi
+    $rataMasukPerTransaksi = $totalTransaksiMasuk > 0
+        ? round($totalMasukBulanIni / $totalTransaksiMasuk, 1)
+        : 0;
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | RATA-RATA LEAD TIME
+    |--------------------------------------------------------------------------
+    |
+    | Lead Time = Tanggal Masuk - Tanggal Pesan
+    |
+    */
+    $rataLeadTime = BarangMasuk::whereBetween(
+            'tanggal_masuk',
+            [$awalBulan, $akhirBulan]
+        )
+        ->whereNotNull('tanggal_pesan')
+        ->whereNotNull('tanggal_masuk')
+        ->whereColumn('tanggal_masuk', '>=', 'tanggal_pesan')
+        ->selectRaw(
+            'AVG(DATEDIFF(tanggal_masuk, tanggal_pesan)) AS rata_lead_time'
+        )
+        ->value('rata_lead_time');
+
+
+    $rataLeadTime = $rataLeadTime !== null
+        ? round((float) $rataLeadTime, 1)
+        : null;
+
+
+    return view('barang-masuk', compact(
+        'barangMasuk',
+        'stokBarang',
+        'search',
+        'tanggal',
+        'totalMasukBulanIni',
+        'totalTransaksiMasuk',
+        'supplierAktif',
+        'rataMasukPerTransaksi',
+        'rataLeadTime'
+    ));
 }
 
 // Menyimpan data barang masuk baru
@@ -782,29 +909,151 @@ public function storeBarangMasuk(Request $request)
 
     public function barangKeluar(Request $request)
 {
-    // Menggunakan join untuk pengurutan, seleksi kolom barang_keluar agar ID tidak tertimpa
-    $query = BarangKeluar::with(['stokBarang', 'notaPembeli'])
-        ->join('nota_pembeli', 'barang_keluar.nota_pembeli_id', '=', 'nota_pembeli.id')
-        ->select('barang_keluar.*')
-        ->orderBy('nota_pembeli.tanggal_keluar', 'desc');
+    $search = $request->input('search');
 
-    // PERBAIKAN: Fitur pencarian melacak nama pembeli dan tujuan di tabel nota_pembeli
-    if ($request->filled('search')) {
-        $search = $request->search;
-        $query->where(function ($q) use ($search) {
-            $q->where('nota_pembeli.nama_pembeli', 'LIKE', "%{$search}%")
-              ->orWhere('nota_pembeli.tujuan', 'LIKE', "%{$search}%")
-              ->orWhere('barang_keluar.id', 'LIKE', "%{$search}%");
+    /*
+    |--------------------------------------------------------------------------
+    | QUERY BARANG KELUAR
+    |--------------------------------------------------------------------------
+    */
+    $query = BarangKeluar::with([
+            'stokBarang',
+            'notaPembeli'
+        ])
+
+        ->join(
+            'nota_pembeli',
+            'barang_keluar.nota_pembeli_id',
+            '=',
+            'nota_pembeli.id'
+        )
+
+        ->join(
+            'stok_barang',
+            'barang_keluar.stok_barang_id',
+            '=',
+            'stok_barang.id'
+        )
+
+        // Penting supaya ID tabel tidak tertimpa hasil JOIN
+        ->select('barang_keluar.*')
+
+        ->orderBy(
+            'nota_pembeli.tanggal_keluar',
+            'desc'
+        );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | PENCARIAN
+    |--------------------------------------------------------------------------
+    |
+    | Bisa mencari berdasarkan:
+    | - Nama pembeli
+    | - Tujuan
+    | - Nomor nota
+    | - Nama barang
+    | - Kode barang
+    |
+    */
+    if ($search) {
+
+        // Jika user mengetik misalnya:
+        // MJ3#-000012
+        // maka hasilnya menjadi 000012
+        $nomorNota = preg_replace(
+            '/[^0-9]/',
+            '',
+            $search
+        );
+
+
+        $query->where(function ($q) use (
+            $search,
+            $nomorNota
+        ) {
+
+            // Nama pembeli
+            $q->where(
+                'nota_pembeli.nama_pembeli',
+                'like',
+                '%' . $search . '%'
+            )
+
+            // Tujuan
+            ->orWhere(
+                'nota_pembeli.tujuan',
+                'like',
+                '%' . $search . '%'
+            )
+
+            // Nama barang
+            ->orWhere(
+                'stok_barang.nama_barang',
+                'like',
+                '%' . $search . '%'
+            )
+
+            // Kode barang
+            ->orWhere(
+                'stok_barang.kode_barang',
+                'like',
+                '%' . $search . '%'
+            );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | NOMOR NOTA
+            |--------------------------------------------------------------------------
+            */
+            if ($nomorNota !== '') {
+
+                $q->orWhere(
+                    'nota_pembeli.id',
+                    (int) $nomorNota
+                );
+            }
         });
     }
 
-    $barangKeluar = $query->paginate(10);
 
-    $keluarHariIni = BarangKeluar::whereHas('notaPembeli', function ($q) {
-        $q->whereDate('tanggal_keluar', today());
-    })->count();
+    /*
+    |--------------------------------------------------------------------------
+    | PAGINATION
+    |--------------------------------------------------------------------------
+    */
+    $barangKeluar = $query
+        ->paginate(10)
+        ->withQueryString();
 
-    return view('barang-keluar', compact('barangKeluar', 'keluarHariIni'));
+
+    /*
+    |--------------------------------------------------------------------------
+    | JUMLAH BARANG KELUAR HARI INI
+    |--------------------------------------------------------------------------
+    */
+    $keluarHariIni = BarangKeluar::whereHas(
+        'notaPembeli',
+        function ($q) {
+
+            $q->whereDate(
+                'tanggal_keluar',
+                today()
+            );
+        }
+    )->count();
+
+
+    return view(
+        'barang-keluar',
+        compact(
+            'barangKeluar',
+            'keluarHariIni',
+            'search'
+        )
+    );
 }
 
 public function barangkeluarcreate()
@@ -1791,23 +2040,16 @@ private function hitungRekomendasiBuffer(StokBarang $barang, $periodeHari = 30)
         )
 
         ->whereNotNull('tanggal_pesan')
-
         ->whereNotNull('tanggal_masuk')
-
         ->get();
 
-
     $leadTimes = $barangMasuk
-
         ->map(function ($item) {
-
             return Carbon::parse($item->tanggal_pesan)
                 ->diffInDays(
                     Carbon::parse($item->tanggal_masuk)
                 );
-
         })
-
         ->filter(function ($nilai) {
             return $nilai >= 0;
         });
@@ -1820,23 +2062,14 @@ private function hitungRekomendasiBuffer(StokBarang $barang, $periodeHari = 30)
     */
 
     if ($leadTimes->isEmpty()) {
-
         return [
-
             'tersedia' => false,
-
             'buffer_sederhana' => null,
-
             'safety_stock' => null,
-
             'pemakaian_rata' => $rataPemakaian,
-
             'pemakaian_maks' => $maksPemakaian,
-
             'standar_deviasi' => $standarDeviasi,
-
             'lead_time_rata' => null,
-
             'lead_time_maks' => null,
 
         ];
@@ -1863,12 +2096,8 @@ private function hitungRekomendasiBuffer(StokBarang $barang, $periodeHari = 30)
     $bufferSederhana =
 
         ($maksPemakaian * $leadTimeMaks)
-
         -
-
         ($rataPemakaian * $leadTimeRata);
-
-
     $bufferSederhana = max(
         0,
         ceil($bufferSederhana)
@@ -1888,42 +2117,26 @@ private function hitungRekomendasiBuffer(StokBarang $barang, $periodeHari = 30)
     */
 
     $z = 1.65;
-
     $safetyStock =
-
         $z
-
         * $standarDeviasi
-
         * sqrt($leadTimeRata);
-
-
     $safetyStock = max(
         0,
         ceil($safetyStock)
     );
-
-
     return [
-
         'tersedia' => true,
-
         'buffer_sederhana' => $bufferSederhana,
-
         'safety_stock' => $safetyStock,
-
         'pemakaian_rata' => round($rataPemakaian, 2),
-
         'pemakaian_maks' => $maksPemakaian,
-
         'standar_deviasi' => round($standarDeviasi, 2),
-
         'lead_time_rata' => round($leadTimeRata, 2),
-
         'lead_time_maks' => $leadTimeMaks,
-
     ];
 }
+
 public function applyBufferMethodAll(Request $request)
 {
     $request->validate([

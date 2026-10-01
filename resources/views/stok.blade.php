@@ -1,3 +1,4 @@
+
 <x-sidebar>
     <div class="space-y-8">
         @if (session('success'))

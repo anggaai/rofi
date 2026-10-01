@@ -15,14 +15,313 @@
         </div>
 
         <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row gap-4 items-center">
-            <div class="relative flex-1">
-                <input type="text" placeholder="Cari No. Referensi atau Supplier..." class="w-full pl-10 pr-4 py-2 text-sm border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all">
-                <svg class="w-4 h-4 absolute left-3.5 top-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <form
+    action="{{ route('barang-masuk') }}"
+    method="GET"
+    class="flex flex-wrap items-center gap-3"
+>
+{{-- ===================================================== --}}
+{{-- RINGKASAN BARANG MASUK --}}
+{{-- ===================================================== --}}
+
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+
+
+    {{-- TOTAL BARANG MASUK --}}
+    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 relative overflow-hidden">
+
+        <div class="absolute top-0 left-0 w-1.5 h-full bg-emerald-500"></div>
+
+        <div class="flex items-center justify-between gap-4">
+
+            <div>
+
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    Masuk Bulan Ini
+                </p>
+
+                <div class="flex items-end gap-2 mt-2">
+
+                    <h3 class="text-2xl font-extrabold text-slate-800">
+                        {{ number_format($totalMasukBulanIni) }}
+                    </h3>
+
+                    <span class="text-xs text-slate-400 font-semibold mb-1">
+                        Unit
+                    </span>
+
+                </div>
+
+                <p class="text-[11px] text-emerald-600 font-medium mt-2">
+                    Total material diterima
+                </p>
+
             </div>
-            <div class="flex items-center gap-2">
-                <input type="date" class="text-sm border-slate-200 rounded-xl focus:ring-indigo-500 py-2">
-                <button class="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-200 transition-all">Filter</button>
+
+
+            <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center">
+
+                <svg
+                    class="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M12 4v16m8-8H4"
+                    />
+
+                </svg>
+
             </div>
+
+        </div>
+
+    </div>
+
+
+
+    {{-- TOTAL TRANSAKSI --}}
+    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 relative overflow-hidden">
+
+        <div class="absolute top-0 left-0 w-1.5 h-full bg-blue-500"></div>
+
+        <div class="flex items-center justify-between gap-4">
+
+            <div>
+
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    Transaksi Masuk
+                </p>
+
+                <div class="flex items-end gap-2 mt-2">
+
+                    <h3 class="text-2xl font-extrabold text-slate-800">
+                        {{ number_format($totalTransaksiMasuk) }}
+                    </h3>
+
+                    <span class="text-xs text-slate-400 font-semibold mb-1">
+                        Transaksi
+                    </span>
+
+                </div>
+
+                <p class="text-[11px] text-blue-600 font-medium mt-2">
+
+                    Rata-rata
+                    {{ number_format($rataMasukPerTransaksi, 1, ',', '.') }}
+                    unit / transaksi
+
+                </p>
+
+            </div>
+
+
+            <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center">
+
+                <svg
+                    class="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9 12h6m-6 4h6M9 8h6M5 4h14v16H5z"
+                    />
+
+                </svg>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    {{-- SUPPLIER AKTIF --}}
+    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 relative overflow-hidden">
+
+        <div class="absolute top-0 left-0 w-1.5 h-full bg-violet-500"></div>
+
+        <div class="flex items-center justify-between gap-4">
+
+            <div>
+
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    Supplier Aktif
+                </p>
+
+                <div class="flex items-end gap-2 mt-2">
+
+                    <h3 class="text-2xl font-extrabold text-slate-800">
+                        {{ number_format($supplierAktif) }}
+                    </h3>
+
+                    <span class="text-xs text-slate-400 font-semibold mb-1">
+                        Supplier
+                    </span>
+
+                </div>
+
+                <p class="text-[11px] text-violet-600 font-medium mt-2">
+                    Supplier bulan berjalan
+                </p>
+
+            </div>
+
+
+            <div class="w-12 h-12 bg-violet-50 text-violet-600 rounded-2xl flex items-center justify-center">
+
+                <svg
+                    class="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857M15 7a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+
+                </svg>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    {{-- LEAD TIME --}}
+    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 relative overflow-hidden">
+
+        <div class="absolute top-0 left-0 w-1.5 h-full bg-amber-500"></div>
+
+        <div class="flex items-center justify-between gap-4">
+
+            <div>
+
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    Rata-rata Lead Time
+                </p>
+
+                <div class="flex items-end gap-2 mt-2">
+
+                    @if($rataLeadTime !== null)
+
+                        <h3 class="text-2xl font-extrabold text-slate-800">
+                            {{ number_format($rataLeadTime, 1, ',', '.') }}
+                        </h3>
+
+                        <span class="text-xs text-slate-400 font-semibold mb-1">
+                            Hari
+                        </span>
+
+                    @else
+
+                        <h3 class="text-lg font-extrabold text-slate-400">
+                            Belum Ada Data
+                        </h3>
+
+                    @endif
+
+                </div>
+
+                <p class="text-[11px] text-amber-600 font-medium mt-2">
+                    Waktu pesan hingga barang diterima
+                </p>
+
+            </div>
+
+
+            <div class="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center">
+
+                <svg
+                    class="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+
+                </svg>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+    {{-- PENCARIAN --}}
+    <div class="relative">
+
+        <input
+            type="text"
+            name="search"
+            value="{{ request('search') }}"
+            placeholder="Cari barang, kode, kategori, supplier..."
+            class="w-72 rounded-lg border-gray-300 focus:border-green-500 focus:ring-green-500"
+        >
+
+    </div>
+
+
+    {{-- FILTER TANGGAL --}}
+    <div>
+
+        <input
+            type="date"
+            name="tanggal"
+            value="{{ request('tanggal') }}"
+            class="rounded-lg border-gray-300 focus:border-green-500 focus:ring-green-500"
+        >
+
+    </div>
+
+
+    {{-- TOMBOL FILTER --}}
+    <button
+        type="submit"
+        class="px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800"
+    >
+        Filter
+    </button>
+
+
+    {{-- RESET --}}
+    @if(request('search') || request('tanggal'))
+
+        <a
+            href="{{ route('barang-masuk') }}"
+            class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+        >
+            Reset
+        </a>
+
+    @endif
+
+</form>
         </div>
 
         <div class="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
@@ -111,6 +410,15 @@
                 @endforelse
             </tbody>
         </table>
+        @if ($barangMasuk->hasPages())
+
+    <div class="mt-6">
+
+        {{ $barangMasuk->links() }}
+
+    </div>
+
+@endif
     </div>
 </div>
 

@@ -32,13 +32,41 @@
         <div class="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
             <div class="p-6 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <h3 class="font-bold text-slate-800">Daftar Pengeluaran Material</h3>
-                <form method="GET" action="{{ route('barang-keluar') }}" class="flex gap-2">
-                    <input type="text" name="search" placeholder="Cari Nota/Pelanggan..." value="{{ request('search') }}" class="pl-4 pr-10 py-2 bg-slate-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-slate-900 w-64">
-                    <button type="submit" class="px-4 py-2 bg-slate-200 rounded-xl text-sm font-semibold">Cari</button>
-                    @if(request('search'))
-                        <a href="{{ route('barang-keluar') }}" class="px-4 py-2 bg-slate-100 rounded-xl text-sm">Reset</a>
-                    @endif
-                </form>
+                <form
+    action="{{ route('barang-keluar') }}"
+    method="GET"
+    class="flex items-center gap-3"
+>
+
+    <input
+        type="text"
+        name="search"
+        value="{{ request('search') }}"
+        placeholder="Cari nota, pembeli, barang, kode..."
+        class="w-72 rounded-lg border-gray-300 focus:border-green-500 focus:ring-green-500"
+    >
+
+
+    <button
+        type="submit"
+        class="px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800"
+    >
+        Cari
+    </button>
+
+
+    @if(request('search'))
+
+        <a
+            href="{{ route('barang-keluar') }}"
+            class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+        >
+            Reset
+        </a>
+
+    @endif
+
+</form>
             </div>
 
             <div class="overflow-x-auto">
