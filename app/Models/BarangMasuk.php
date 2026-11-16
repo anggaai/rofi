@@ -18,4 +18,8 @@ class BarangMasuk extends Model
     {
         return $this->belongsTo(StokBarang::class, 'stok_barang_id');
     }
+    public function sudahDiterima(): bool
+{
+    return $this->tanggal_masuk !== null;
+}
 }

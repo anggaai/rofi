@@ -253,23 +253,17 @@
 
         <form action="{{ route('barang.store') }}" method="POST" enctype="multipart/form-data" class="flex flex-col flex-1 min-h-0 m-0">
             @csrf
-            @if ($errors->has('nama_barang'))
+            @if ($errors->any())
                 <div class="mx-6 mt-4 px-4 py-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3">
-
-                    <div class="text-rose-600 mt-0.5">
-                        ⚠️
-                    </div>
-
+                    <div class="text-rose-600 mt-0.5">⚠️</div>
                     <div>
-                        <p class="text-xs font-bold text-rose-700">
-                            Data Tidak Dapat Disimpan
-                        </p>
-
-                        <p class="text-xs text-rose-600 mt-0.5">
-                            {{ $errors->first('nama_barang') }}
-                        </p>
+                        <p class="text-xs font-bold text-rose-700">Data Tidak Dapat Disimpan</p>
+                        <ul class="mt-0.5 space-y-0.5">
+                            @foreach ($errors->all() as $error)
+                                <li class="text-xs text-rose-600">{{ $error }}</li>
+                            @endforeach
+                        </ul>
                     </div>
-
                 </div>
             @endif
             <div class="p-6 space-y-4.5 overflow-y-auto flex-1 content-custom-scroll bg-white">

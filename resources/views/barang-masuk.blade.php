@@ -1,5 +1,21 @@
 <x-sidebar>
     <div class="space-y-6">
+        @if (session('success'))
+                <div class="px-4 py-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-semibold">
+                    {{ session('success') }}
+                </div>
+            @endif
+
+            @if ($errors->any())
+                <div class="px-4 py-3 bg-rose-50 border border-rose-200 rounded-xl">
+                    <p class="text-xs font-bold text-rose-700">Data Tidak Dapat Disimpan</p>
+                    <ul class="mt-0.5 space-y-0.5">
+                        @foreach ($errors->all() as $error)
+                            <li class="text-xs text-rose-600">{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+         @endif
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
                 <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Log Barang Masuk</h1>
@@ -300,6 +316,19 @@
     </div>
 
 
+       {{-- FILTER STATUS --}}
+    <div>
+        <select
+            name="status"
+            class="rounded-lg border-gray-300 focus:border-green-500 focus:ring-green-500"
+        >
+            <option value="">Semua Status</option>
+            <option value="belum" @selected(request('status') === 'belum')>Belum Diterima</option>
+            <option value="diterima" @selected(request('status') === 'diterima')>Diterima</option>
+        </select>
+    </div>
+
+
     {{-- TOMBOL FILTER --}}
     <button
         type="submit"
@@ -310,7 +339,7 @@
 
 
     {{-- RESET --}}
-    @if(request('search') || request('tanggal'))
+    @if(request('search') || request('tanggal') || request('status'))
 
         <a
             href="{{ route('barang-masuk') }}"
@@ -342,10 +371,14 @@
                 <tr class="group hover:bg-slate-50/50 transition-all duration-200">
                     <td class="px-6 py-5 align-middle">
                         <div class="flex flex-col">
-                            <span class="text-slate-700 font-semibold text-sm leading-tight">
-                                {{ \Carbon\Carbon::parse($item->tanggal_masuk)->translatedFormat('d F Y') }}
-                            </span>
-                            <span class="text-[10px] font-mono text-indigo-600 mt-1.5 bg-indigo-50/60 self-start px-2 py-0.5 rounded-md font-medium tracking-wide">
+                                <span class="text-slate-700 font-semibold text-sm leading-tight">
+                                    @if ($item->tanggal_masuk)
+                                        {{ \Carbon\Carbon::parse($item->tanggal_masuk)->translatedFormat('d F Y') }}
+                                    @else
+                                        Dipesan {{ \Carbon\Carbon::parse($item->tanggal_pesan)->translatedFormat('d F Y') }}
+                                    @endif
+                                </span>
+                                <span class="text-[10px] font-mono text-indigo-600 mt-1.5 bg-indigo-50/60 self-start px-2 py-0.5 rounded-md font-medium tracking-wide">
                                 BM-{{ str_pad($item->id, 6, '0', STR_PAD_LEFT) }}
                             </span>
                         </div>
@@ -375,16 +408,37 @@
                     </td>
                     
                     <td class="px-6 py-5 align-middle text-center">
-                        <span class="inline-flex items-center px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full text-[10px] font-bold uppercase tracking-wider border border-emerald-200/40">
-                            <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5 animate-pulse"></span>
-                            Ditambahkan
-                        </span>
+                        @if ($item->sudahDiterima())
+                            <span class="inline-flex items-center px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full text-[10px] font-bold uppercase tracking-wider border border-emerald-200/40">
+                                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5"></span>
+                                Diterima
+                            </span>
+                        @else
+                            <span class="inline-flex items-center px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full text-[10px] font-bold uppercase tracking-wider border border-amber-200/60">
+                                <span class="w-1.5 h-1.5 bg-amber-500 rounded-full mr-1.5 animate-pulse"></span>
+                                Belum Diterima
+                            </span>
+                        @endif
                     </td>
                     
                     <td class="px-6 py-5 align-middle text-center">
                         <div class="flex items-center justify-center">
-                            <form action="{{ route('barang-masuk.destroy', $item->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus riwayat masuk ini? Stok barang akan otomatis dikurangi kembali.')" class="m-0">
-                                @csrf
+                            <button type="button"
+                                onclick="bukaModalEdit(this)"
+                                data-id="{{ $item->id }}"
+                                data-material="{{ $item->stokBarang->nama_barang ?? 'Material tidak diketahui' }}"
+                                data-jumlah="{{ $item->jumlah }}"
+                                data-tanggal-pesan="{{ $item->tanggal_pesan ? \Carbon\Carbon::parse($item->tanggal_pesan)->format('Y-m-d') : '' }}"
+                                data-tanggal-masuk="{{ $item->tanggal_masuk ? \Carbon\Carbon::parse($item->tanggal_masuk)->format('Y-m-d') : '' }}"
+                                data-diterima="{{ $item->sudahDiterima() ? '1' : '0' }}"
+                                data-supplier="{{ $item->supplier }}"
+                                class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl border border-transparent hover:border-indigo-100 transition-all duration-200"
+                                title="Edit">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                                </svg>
+                            </button>
+                            <form action="{{ route('barang-masuk.destroy', $item->id) }}" method="POST" onsubmit="return confirm('{{ $item->sudahDiterima() ? 'Yakin menghapus riwayat masuk ini? Stok barang akan dikurangi kembali.' : 'Yakin menghapus pesanan ini? Stok tidak berubah karena barang belum diterima.' }}')" class="m-0">                                @csrf
                                 @method('DELETE')
                                 <button type="submit" class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl border border-transparent hover:border-rose-100 transition-all duration-200 flex items-center justify-center group/btn" title="Hapus Log">
                                     <svg class="w-4 h-4 transform group-hover/btn:scale-110 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -442,9 +496,9 @@
                             @endforeach
                         </select>
                     </div>
-                    <div>
+                   <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Jumlah</label>
-                        <input type="number" name="jumlah" required min="1" class="w-full border-slate-200 rounded-xl focus:ring-indigo-500">
+                        <input type="number" name="jumlah" id="editJumlah" required min="1" class="w-full border-slate-200 rounded-xl focus:ring-indigo-500">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-500 mb-2">
@@ -459,7 +513,8 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Tanggal Masuk</label>
-                        <input type="date" name="tanggal_masuk" required value="{{ date('Y-m-d') }}" class="w-full border-slate-200 rounded-xl focus:ring-indigo-500">
+                        <input type="date" name="tanggal_masuk" id="editTanggalMasuk" class="w-full border-slate-200 rounded-xl focus:ring-indigo-500">
+                        <p class="text-[11px] text-slate-400 mt-1">Isi saat barang datang. Setelah diisi, tidak bisa dikosongkan lagi.</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Supplier</label>
@@ -473,4 +528,60 @@
             </form>
         </div>
     </div>
+    <div id="modalEdit" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden transition-all" onclick="if(event.target===this) this.classList.add('hidden')">
+    <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl">
+        <div class="flex justify-between items-center border-b pb-3 mb-4">
+            <h2 class="text-xl font-bold text-slate-800">Edit Barang Masuk</h2>
+            <button type="button" onclick="document.getElementById('modalEdit').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">&times;</button>
+        </div>
+        <form id="formEdit" method="POST">
+            @csrf
+            @method('PUT')
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Material</label>
+                    <input type="text" id="editMaterial" readonly class="w-full border-slate-200 rounded-xl bg-slate-100 text-slate-500 cursor-not-allowed">
+                    <p class="text-[11px] text-slate-400 mt-1">Material tidak bisa diubah. Jika salah pilih, hapus lalu input ulang.</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Jumlah (sesuai yang benar-benar diterima)</label>
+                    <input type="number" name="jumlah" id="editJumlah" required min="1" class="w-full border-slate-200 rounded-xl focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Tanggal Pemesanan</label>
+                    <input type="date" name="tanggal_pesan" id="editTanggalPesan" required class="w-full border-slate-200 rounded-xl focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Tanggal Masuk <span class="text-slate-400 font-normal">(opsional)</span></label>
+                    <input type="date" name="tanggal_masuk" class="w-full border-slate-200 rounded-xl focus:ring-indigo-500">
+                    <p class="text-[11px] text-slate-400 mt-1">Kosongkan jika barang belum datang. Stok baru bertambah setelah tanggal masuk diisi.</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Supplier</label>
+                    <input type="text" name="supplier" id="editSupplier" class="w-full border-slate-200 rounded-xl focus:ring-indigo-500" placeholder="Nama supplier (opsional)">
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 mt-6">
+                <button type="button" onclick="document.getElementById('modalEdit').classList.add('hidden')" class="px-4 py-2 text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200">Batal</button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700">Simpan Perubahan</button>
+            </div>
+        </form>
+    </div>
+</div>
 </x-sidebar>
+<script>
+    function bukaModalEdit(btn) {
+    const d = btn.dataset;
+    const urlTemplate = "{{ route('barang-masuk.update', ['id' => '__ID__']) }}";
+
+    document.getElementById('formEdit').action = urlTemplate.replace('__ID__', d.id);
+    document.getElementById('editMaterial').value = d.material;
+    document.getElementById('editJumlah').value = d.jumlah;
+    document.getElementById('editTanggalPesan').value = d.tanggalPesan;
+    document.getElementById('editTanggalMasuk').value = d.tanggalMasuk;
+    document.getElementById('editTanggalMasuk').required = d.diterima === '1';
+    document.getElementById('editSupplier').value = d.supplier;
+
+    document.getElementById('modalEdit').classList.remove('hidden');
+}
+</script>

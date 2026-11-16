@@ -14,7 +14,8 @@ return new class extends Migration
         $table->id();
         $table->foreignId('stok_barang_id')->constrained('stok_barang')->onDelete('cascade');
         $table->integer('jumlah');
-        $table->date('tanggal_masuk');
+        $table->date('tanggal_pesan');
+        $table->date('tanggal_masuk')->nullable();
         $table->string('supplier')->nullable();
         $table->softDeletes();
         $table->timestamps();

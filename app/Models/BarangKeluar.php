@@ -13,7 +13,6 @@ class BarangKeluar extends Model
 
     protected $fillable = ['nota_pembeli_id','stok_barang_id', 'jumlah', 'harga_satuan','deleted_at'];
     protected $casts = [
-    'tanggal_keluar' => 'datetime',
     'deleted_at' => 'datetime',
     ];
     public function notaPembeli() {

@@ -57,6 +57,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/stok/opname/{id}/restore', [InventoryController::class, 'restoreOpname'])->name('opname.restore');
     Route::delete('/nota-pembeli/{id}/force-delete',[InventoryController::class, 'forceDeleteNotaPembeli'])->name('nota-pembeli.force-delete');
     Route::post('/buffer/apply-all',[InventoryController::class, 'applyBufferMethodAll'])->name('buffer.apply.all');});
+    Route::put('/barang-masuk/{id}', [InventoryController::class, 'updateBarangMasuk'])->name('barang-masuk.update');
 
 
 

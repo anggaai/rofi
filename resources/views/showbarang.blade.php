@@ -123,7 +123,19 @@
                 <form action="{{ route('barang.update', $barang->id) }}" method="POST" enctype="multipart/form-data" class="m-0">
                     @csrf
                     @method('PUT')
-
+                    @if ($errors->any())
+                        <div class="mx-8 mt-8 px-4 py-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3">
+                            <div class="text-rose-600 mt-0.5">⚠️</div>
+                            <div>
+                                <p class="text-xs font-bold text-rose-700">Perubahan Tidak Dapat Disimpan</p>
+                                <ul class="mt-0.5 space-y-0.5">
+                                    @foreach ($errors->all() as $error)
+                                        <li class="text-xs text-rose-600">{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        </div>
+                    @endif
                     <div class="p-8 space-y-6">
                         <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-50 pb-2">Formulir Perubahan Informasi</p>
 

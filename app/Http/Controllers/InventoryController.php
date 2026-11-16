@@ -160,7 +160,8 @@ class InventoryController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    $riwayatMasuk = BarangMasuk::where('stok_barang_id', $barang->id)
+   $riwayatMasuk = BarangMasuk::where('stok_barang_id', $barang->id)
+        ->whereNotNull('tanggal_masuk')
         ->get()
         ->map(function ($item) {
 
@@ -355,7 +356,11 @@ class InventoryController extends Controller
         'stok_minimum' => 'required|integer|min:0',
         'harga_beli' => 'required|numeric|min:0', // Menggunakan numeric
         'harga_jual' => 'required|numeric|min:0', // Menggunakan numeric
-        'gambar' => 'nullable|image|mimes:jpg,jpeg,png|max:2048'
+        'gambar' => 'bail|nullable|mimes:jpg,jpeg,png|max:2048',
+    ], [
+    'gambar.mimes'    => 'Format foto harus PNG, JPG, atau JPEG.',
+    'gambar.max'      => 'Ukuran foto terlalu besar. Maksimal 2 MB.',
+    'gambar.uploaded' => 'Foto gagal diunggah. Pastikan ukurannya tidak lebih dari 2 MB.'
     ]);
     
     // Siapkan data untuk update
@@ -415,7 +420,7 @@ class InventoryController extends Controller
     // 2. Cari data Stok Barang utamanya berdasarkan relasi 'stok_barang_id'
     $stokBarang = StokBarang::find($logMasuk->stok_barang_id);
 
-    if ($stokBarang) {
+    if ($stokBarang && $logMasuk->sudahDiterima()) {
         // 3. KEMBALIKAN STOK: Kurangi stok utama dengan jumlah yang pernah dimasukkan sebelumnya
         $stokBarang->decrement('stok', $logMasuk->jumlah);
     }
@@ -751,6 +756,7 @@ class InventoryController extends Controller
 
    public function barangMasuk(Request $request)
 {
+
     $search = $request->input('search');
     $tanggal = $request->input('tanggal');
 
@@ -760,7 +766,15 @@ class InventoryController extends Controller
     |--------------------------------------------------------------------------
     */
     $query = BarangMasuk::with('stokBarang')
-        ->latest('tanggal_masuk');
+        ->orderByRaw('tanggal_masuk IS NULL DESC')
+        ->latest('tanggal_masuk')
+        ->latest('id');
+
+    if ($request->input('status') === 'belum') {
+        $query->whereNull('tanggal_masuk');
+    } elseif ($request->input('status') === 'diterima') {
+        $query->whereNotNull('tanggal_masuk');
+    }
 
 
     if ($search) {
@@ -888,23 +902,34 @@ public function storeBarangMasuk(Request $request)
 {
     $request->validate([
         'stok_barang_id' => 'required|exists:stok_barang,id',
-        'jumlah' => 'required|integer|min:1',
-        'tanggal_masuk' => 'required|date',
-        'tanggal_pesan' =>'required|date|before_or_equal:tanggal_masuk',
-        'supplier' => 'nullable|string|max:255',
+        'jumlah'         => 'required|integer|min:1',
+        'tanggal_pesan'  => 'required|date',
+        'tanggal_masuk'  => 'nullable|date|after_or_equal:tanggal_pesan',
+        'supplier'       => 'nullable|string|max:255',
     ]);
 
-    BarangMasuk::create([
-        'stok_barang_id' => $request->stok_barang_id,
-        'jumlah' => $request->jumlah,
-        'tanggal_pesan' =>$request->tanggal_pesan,
-        'tanggal_masuk' => $request->tanggal_masuk,
-        'supplier' => $request->supplier,
-    ]);
-    $stokBarang = StokBarang::findOrFail($request->stok_barang_id);
-    $stokBarang->increment('stok', $request->jumlah);
+    DB::transaction(function () use ($request) {
+        $log = BarangMasuk::create([
+            'stok_barang_id' => $request->stok_barang_id,
+            'jumlah'         => $request->jumlah,
+            'tanggal_pesan'  => $request->tanggal_pesan,
+            'tanggal_masuk'  => $request->filled('tanggal_masuk') ? $request->tanggal_masuk : null,
+            'supplier'       => $request->supplier,
+        ]);
 
-    return redirect()->route('barang-masuk')->with('success', 'Barang masuk berhasil dicatat.');
+        // Stok hanya bertambah kalau barang sudah diterima
+        if ($log->sudahDiterima()) {
+            StokBarang::lockForUpdate()
+                ->findOrFail($log->stok_barang_id)
+                ->increment('stok', $log->jumlah);
+        }
+    });
+
+    $pesan = $request->filled('tanggal_masuk')
+        ? 'Barang masuk berhasil dicatat dan stok bertambah.'
+        : 'Pesanan dicatat dengan status Belum Diterima. Stok bertambah setelah tanggal masuk diisi.';
+
+    return redirect()->route('barang-masuk')->with('success', $pesan);
 }
 
     public function barangKeluar(Request $request)
@@ -1205,63 +1230,66 @@ public function barangkeluardestroy($id)
             )
         ],
 
-        'gambar' =>
-            'nullable|image|mimes:jpg,jpeg,png|max:2048'
-    ]);
+            'gambar' => 'bail|nullable|mimes:jpg,jpeg,png|max:2048',
+        ], [
+            'gambar.mimes'    => 'Format foto harus PNG, JPG, atau JPEG.',
+            'gambar.max'      => 'Ukuran foto terlalu besar. Maksimal 2 MB.',
+            'gambar.uploaded' => 'Foto gagal diunggah. Pastikan ukurannya tidak lebih dari 2 MB.',
+            ]);
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | SIAPKAN DATA
-    |--------------------------------------------------------------------------
-    */
-    $data = $request->all();
+            /*
+            |--------------------------------------------------------------------------
+            | SIAPKAN DATA
+            |--------------------------------------------------------------------------
+            */
+            $data = $request->all();
 
-    $namaFoto = null;
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | UPLOAD GAMBAR
-    |--------------------------------------------------------------------------
-    */
-    if ($request->hasFile('gambar')) {
-
-        $namaFoto =
-            time() . '_' .
-            $request
-                ->file('gambar')
-                ->getClientOriginalName();
+            $namaFoto = null;
 
 
-        $request
-            ->file('gambar')
-            ->move(
-                public_path(
-                    'uploads/gambar_barang'
-                ),
-                $namaFoto
-            );
+            /*
+            |--------------------------------------------------------------------------
+            | UPLOAD GAMBAR
+            |--------------------------------------------------------------------------
+            */
+            if ($request->hasFile('gambar')) {
+
+                $namaFoto =
+                    time() . '_' .
+                    $request
+                        ->file('gambar')
+                        ->getClientOriginalName();
 
 
-        $data['gambar'] = $namaFoto;
-    }
+                $request
+                    ->file('gambar')
+                    ->move(
+                        public_path(
+                            'uploads/gambar_barang'
+                        ),
+                        $namaFoto
+                    );
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | SIMPAN BARANG
-    |--------------------------------------------------------------------------
-    */
-    StokBarang::create($data);
+                $data['gambar'] = $namaFoto;
+            }
 
 
-    return redirect()
-        ->route('stok')
-        ->with(
-            'success',
-            'Material berhasil ditambahkan!'
-        );
+            /*
+            |--------------------------------------------------------------------------
+            | SIMPAN BARANG
+            |--------------------------------------------------------------------------
+            */
+            StokBarang::create($data);
+
+
+            return redirect()
+                ->route('stok')
+                ->with(
+                    'success',
+                    'Material berhasil ditambahkan!'
+                );
 }
 public function restoreBarangMasuk($id)
 {
@@ -1273,7 +1301,7 @@ public function restoreBarangMasuk($id)
 
     // Opsional: Karena data kembali aktif, kita harus menambahkan kembali stok utama barang tersebut
     $stokBarang = StokBarang::find($logMasuk->stok_barang_id);
-    if ($stokBarang) {
+    if ($stokBarang && $logMasuk->sudahDiterima()) {
         $stokBarang->increment('stok', $logMasuk->jumlah);
     }
 
@@ -2232,6 +2260,63 @@ public function applyBufferMethodAll(Request $request)
             "{$berhasil} barang berhasil diperbarui. {$dilewati} barang dilewati karena data lead time belum tersedia."
 
     ]);
+}
+// Mengubah data barang masuk (jumlah, tanggal, supplier)
+public function updateBarangMasuk(Request $request, $id)
+{
+    $request->validate([
+        'jumlah'        => 'required|integer|min:1',
+        'tanggal_pesan' => 'required|date',
+        'tanggal_masuk' => 'nullable|date|after_or_equal:tanggal_pesan',
+        'supplier'      => 'nullable|string|max:255',
+    ], [
+        'tanggal_masuk.after_or_equal' => 'Tanggal masuk tidak boleh sebelum tanggal pemesanan.',
+    ]);
+
+    DB::transaction(function () use ($request, $id) {
+        $log  = BarangMasuk::lockForUpdate()->findOrFail($id);
+        $stok = StokBarang::lockForUpdate()->findOrFail($log->stok_barang_id);
+
+        $sudahDiterima = $log->tanggal_masuk !== null;
+        $akanDiterima  = $request->filled('tanggal_masuk');
+        $jumlahBaru    = (int) $request->jumlah;
+
+        // Barang yang sudah diterima tidak boleh dikembalikan ke "belum diterima"
+        if ($sudahDiterima && ! $akanDiterima) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'tanggal_masuk' => 'Barang yang sudah diterima tidak bisa dikembalikan ke status belum diterima. Hapus riwayatnya jika memang salah input.',
+            ]);
+        }
+
+        if (! $sudahDiterima && $akanDiterima) {
+            $perubahan = $jumlahBaru;                        // baru diterima: stok + jumlah
+        } elseif ($sudahDiterima && $akanDiterima) {
+            $perubahan = $jumlahBaru - (int) $log->jumlah;   // sudah diterima: stok + selisih
+        } else {
+            $perubahan = 0;                                  // masih belum diterima
+        }
+
+        if ($stok->stok + $perubahan < 0) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'jumlah' => 'Jumlah tidak bisa dikurangi sebanyak itu. Stok saat ini hanya '
+                    . $stok->stok . ' karena sebagian barang sudah keluar.',
+            ]);
+        }
+
+        $log->update([
+            'jumlah'        => $jumlahBaru,
+            'tanggal_pesan' => $request->tanggal_pesan,
+            'tanggal_masuk' => $akanDiterima ? $request->tanggal_masuk : null,
+            'supplier'      => $request->supplier,
+        ]);
+
+        if ($perubahan !== 0) {
+            $stok->increment('stok', $perubahan);
+        }
+    });
+
+    return redirect()->route('barang-masuk')
+        ->with('success', 'Data barang masuk berhasil diperbarui dan stok disesuaikan.');
 }
 
 }
