@@ -352,7 +352,6 @@ class InventoryController extends Controller
         'kode_barang' => 'required|string|unique:stok_barang,kode_barang,' . $id . ',id',
         'nama_barang' => 'required|string',
         'kategori' => 'required|string',
-        'stok' => 'required|integer|min:0',
         'stok_minimum' => 'required|integer|min:0',
         'harga_beli' => 'required|numeric|min:0', // Menggunakan numeric
         'harga_jual' => 'required|numeric|min:0', // Menggunakan numeric
@@ -368,7 +367,6 @@ class InventoryController extends Controller
         'kode_barang' => $request->kode_barang,
         'nama_barang' => $request->nama_barang,
         'kategori' => $request->kategori,
-        'stok' => $request->stok,
         'stok_minimum' => $request->stok_minimum,
         'harga_beli' => $request->harga_beli,
         'harga_jual' => $request->harga_jual,
