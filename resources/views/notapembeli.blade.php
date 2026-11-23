@@ -87,6 +87,7 @@
                                         {{ $item->tujuan ?? 'Tidak ada alamat' }}
                                     </span>
                                     <span class="text-[10px] font-medium text-slate-400 mt-1">{{ \Carbon\Carbon::parse($item->tanggal_keluar)->format('d M Y H:i') }}</span>
+                                    <span class="text-[10px] text-slate-400">Diinput oleh: {{ $item->user->name ?? '-' }}</span>   {{-- ← DITAMBAH --}}
                                 </div>
                             </td>
 

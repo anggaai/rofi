@@ -108,12 +108,13 @@
                                 <small class="text-slate-400">Pembeli: {{ $item->notaPembeli->nama_pembeli ?? '-' }}</small>
                             </td>
                             <td class="px-8 py-6 text-right">
+                                @php $petugas = $item->notaPembeli->user->name ?? 'System'; @endphp   {{-- ← DITAMBAH --}}
                                 <div class="flex items-center justify-end gap-2">
                                     <span class="text-xs font-bold text-slate-700">
-                                        {{ $item->created_by ?? 'System' }}
+                                        {{ $petugas }}                                                {{-- ← DIUBAH --}}
                                     </span>
                                     <div class="w-7 h-7 bg-indigo-500 rounded-full flex items-center justify-center text-[10px] text-white font-bold">
-                                        {{ substr($item->created_by ?? 'S', 0, 1) }}
+                                        {{ strtoupper(substr($petugas, 0, 1)) }}                      {{-- ← DIUBAH --}}
                                     </div>
                                 </div>
                             </td>

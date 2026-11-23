@@ -422,6 +422,7 @@
 
                     <td class="px-6 py-5 align-middle">
                         <span class="text-sm text-slate-600 font-medium">{{ $item->supplier ?? '-' }}</span>
+                        <p class="text-[10px] text-slate-400 mt-1">Diinput oleh: {{ $item->user->name ?? '-' }}</p>   {{-- ← DITAMBAH --}}
                     </td>
                     
                     <td class="px-6 py-5 align-middle text-center">

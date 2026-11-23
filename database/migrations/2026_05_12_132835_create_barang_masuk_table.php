@@ -15,6 +15,7 @@ return new class extends Migration
         $table->date('tanggal_pesan');
         $table->date('tanggal_masuk')->nullable();
         $table->string('supplier')->nullable();
+        $table->foreignId('user_id')->nullable();
         $table->softDeletes();
         $table->timestamps();
         });

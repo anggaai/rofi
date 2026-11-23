@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('no_nota', 20)->nullable()->unique();
             $table->string('nama_pembeli');
             $table->string('tujuan')->nullable(); 
+            $table->foreignId('user_id')->nullable();
             $table->datetime('tanggal_keluar');
             $table->bigInteger('total_harga')->default(0);
             $table->softDeletes();

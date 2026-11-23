@@ -17,6 +17,7 @@ use Psy\Readline\Interactive\Input\Buffer;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Carbon\Carbon;
 use App\Models\DetailBarangMasuk;
+use id;
 
 class InventoryController extends Controller
 {
@@ -769,7 +770,7 @@ class InventoryController extends Controller
     | DATA TABEL BARANG MASUK
     |--------------------------------------------------------------------------
     */
-    $query = BarangMasuk::with('detail.stokBarang')
+     $query = BarangMasuk::with(['detail.stokBarang', 'user'])  
     ->orderByRaw('tanggal_masuk IS NULL DESC')
     ->latest('tanggal_masuk')
     ->latest('id');
@@ -910,13 +911,14 @@ public function storeBarangMasuk(Request $request)
         'barang.*.harga_beli'         => 'required|numeric|min:0',
     ]);
 
-    DB::transaction(function () use ($request) {
+        DB::transaction(function () use ($request) {
         $sudahDiterima = $request->filled('tanggal_masuk');
 
         $log = BarangMasuk::create([
             'tanggal_pesan'  => $request->tanggal_pesan,
             'tanggal_masuk'  => $sudahDiterima ? $request->tanggal_masuk : null,
             'supplier'       => $request->supplier,
+            'user_id'        => Auth::id(),
         ]);
 
         foreach ($request->barang as $baris) {
@@ -953,7 +955,7 @@ public function storeBarangMasuk(Request $request)
     */
     $query = BarangKeluar::with([
             'stokBarang',
-            'notaPembeli'
+            'notaPembeli.user'      
         ])
 
         ->join(
@@ -1118,9 +1120,10 @@ public function barangkeluarstore(Request $request)
 
         DB::beginTransaction();
 
-        $nota = NotaPembeli::create([
+       $nota = NotaPembeli::create([
             'nama_pembeli'   => $request->nama_pembeli,
             'tujuan'         => $request->tujuan,
+            'user_id'        => Auth::id(),
             'tanggal_keluar' => $request->tanggal_keluar,
             'total_harga'    => $totalHarga,
         ]);
@@ -1347,7 +1350,7 @@ public function notaPembeli(Request $request)
         $search = $request->get('search');
 
         // Gunakan eager loading (with) agar query efisien
-        $notaPembeli = NotaPembeli::with(['barangKeluar.stokBarang'])
+        $notaPembeli = NotaPembeli::with(['barangKeluar.stokBarang', 'user'])   // ← DIUBAH
             ->when($search, function ($query, $search) {
                 return $query->where('nama_pembeli', 'like', "%{$search}%")
                              ->orWhere('no_nota', 'like', "%{$search}%");
@@ -1540,6 +1543,8 @@ public function storeNotaPembeli(Request $request)
             'tujuan' =>
                 $request->tujuan,
 
+            'user_id' => Auth::id(),                 // ← DITAMBAH
+
             'tanggal_keluar' =>
                 $request->tanggal_keluar,
 
@@ -1722,7 +1727,7 @@ public function destroyNotaPembeli($id)
 public function cetak($id)
 {
     // Mengambil data nota spesifik beserta detail rincian barang keluar dan stok barangnya
-    $nota = NotaPembeli::with(['barangKeluar.stokBarang'])->findOrFail($id);
+    $nota = NotaPembeli::with(['barangKeluar.stokBarang', 'user'])->findOrFail($id);   // ← DIUBAH
 
     // Mengembalikan view khusus cetak cetak_invoice.blade.php
     return view('cetak-notapembeli', compact('nota'));

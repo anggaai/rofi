@@ -549,6 +549,10 @@
 
                         </p>
 
+                        <p class="text-[9px] text-gray-600 mt-1">                      
+                            Dibuat oleh: {{ $nota->user->name ?? '-' }}                
+                        </p>                                                           
+
                     </div>
 
                 </div>

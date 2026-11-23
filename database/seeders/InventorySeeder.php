@@ -384,14 +384,46 @@ class InventorySeeder extends Seeder
             ];
 
 
-            $tujuan = [
-                'Pembangunan Rumah',
-                'Renovasi Rumah',
-                'Pembangunan Ruko',
-                'Renovasi Toko',
-                'Pembangunan Gudang',
-                'Kebutuhan Proyek',
+            /*
+            | Kolom `tujuan` pada nota_pembeli dipakai aplikasi sebagai
+            | "Alamat / Tujuan Pengiriman" (tampil di bawah nama pembeli
+            | pada nota cetak), jadi isinya harus berupa alamat/lokasi,
+            | bukan alasan pembelian.
+            */
+            $alamatTujuan = [
+                'Jl. Teuku Umar No. 45, Kedaton, Bandar Lampung',
+                'Jl. Imam Bonjol No. 12, Kemiling, Bandar Lampung',
+                'Jl. Soekarno-Hatta No. 88, Rajabasa, Bandar Lampung',
+                'Jl. Pramuka No. 21, Way Halim, Bandar Lampung',
+                'Jl. Ratu Dibalau No. 7, Tanjung Senang, Bandar Lampung',
+                'Jl. Zainal Abidin Pagar Alam No. 30, Labuhan Ratu, Bandar Lampung',
             ];
+
+
+            /*
+            | Nomor nota berformat huruf + angka (INV-XXXXXX), sama dengan
+            | format otomatis di model NotaPembeli. Seeder memakai DB::table()
+            | sehingga event creating() milik model tidak berjalan; karena itu
+            | nomor dibuat di sini dan dijamin unik.
+            */
+            $karakterNota = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            $nomorNotaTerpakai = [];
+
+            $buatNomorNota = function () use ($karakterNota, &$nomorNotaTerpakai) {
+                do {
+                    $kode = '';
+
+                    for ($i = 0; $i < 6; $i++) {
+                        $kode .= $karakterNota[random_int(0, strlen($karakterNota) - 1)];
+                    }
+
+                    $kode = 'INV-' . $kode;
+                } while (isset($nomorNotaTerpakai[$kode]));
+
+                $nomorNotaTerpakai[$kode] = true;
+
+                return $kode;
+            };
 
 
             /*
@@ -460,11 +492,12 @@ class InventorySeeder extends Seeder
 
 
                     $notaId = DB::table('nota_pembeli')->insertGetId([
+                        'no_nota' => $buatNomorNota(),
                         'nama_pembeli' => $namaPembeli[
                             $nomorHariGlobal % count($namaPembeli)
                         ],
-                        'tujuan' => $tujuan[
-                            $nomorHariGlobal % count($tujuan)
+                        'tujuan' => $alamatTujuan[
+                            $nomorHariGlobal % count($alamatTujuan)
                         ],
                         'tanggal_keluar' => $tanggal,
                         'total_harga' => $totalNota,

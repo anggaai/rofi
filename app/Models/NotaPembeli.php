@@ -14,6 +14,7 @@ class NotaPembeli extends Model
         'no_nota',
         'nama_pembeli',
         'tujuan',
+        'user_id',
         'tanggal_keluar',
         'total_harga',
         'deleted_at',
@@ -52,6 +53,12 @@ class NotaPembeli extends Model
 
         return $kode;
     }
+
+public function user()
+{
+    return $this->belongsTo(User::class);
+}
+
     public function barangKeluar()
 {
     return $this->hasMany(BarangKeluar::class, 'nota_pembeli_id'); 
