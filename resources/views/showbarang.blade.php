@@ -322,6 +322,10 @@
                         Keterangan
                     </th>
 
+                    <th class="px-6 py-4 text-left">
+                        Diinput Oleh
+                    </th>
+
                     <th class="px-6 py-4 text-center">
                         Aksi
                     </th>
@@ -436,10 +440,38 @@
                         </td>
 
 
-                        {{-- KETERANGAN --}}
+                                                {{-- KETERANGAN --}}
                         <td class="px-6 py-4 text-slate-600">
 
                             {{ $item['keterangan'] }}
+
+                        </td>
+
+
+                        {{-- DIINPUT OLEH --}}
+                        <td class="px-6 py-4 whitespace-nowrap">
+
+                            @if($item['user'] !== '-')
+
+                                <div class="flex items-center gap-2">
+
+                                    <div class="w-7 h-7 rounded-full bg-indigo-100 text-indigo-600
+                                                flex items-center justify-center
+                                                text-[11px] font-black uppercase">
+                                        {{ mb_substr($item['user'], 0, 1) }}
+                                    </div>
+
+                                    <span class="text-xs font-semibold text-slate-700">
+                                        {{ $item['user'] }}
+                                    </span>
+
+                                </div>
+
+                            @else
+
+                                <span class="text-slate-300">-</span>
+
+                            @endif
 
                         </td>
 
@@ -574,7 +606,7 @@
 
                     <tr>
 
-                        <td colspan="6"
+                        <td colspan="7"
                             class="px-6 py-10 text-center text-slate-400">
 
                             Belum ada riwayat pergerakan stok.

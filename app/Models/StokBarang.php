@@ -23,6 +23,7 @@ class StokBarang extends Model
         'harga_beli', 
         'harga_jual',
         'gambar',
+        'user_id'
     ];
     protected static function boot()
 {
@@ -60,6 +61,11 @@ public function detailBarangMasuk()
     {
         return $this->hasMany(DetailBarangMasuk::class, 'stok_barang_id');
     }
+public function user()
+{
+    return $this->belongsTo(User::class);
+}
+
     
 protected $dates = ['deleted_at']; 
 }

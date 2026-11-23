@@ -23,6 +23,7 @@ return new class extends Migration
         $table->decimal('harga_beli', 12, 2);
         $table->decimal('harga_jual', 12, 2);
         $table->string('gambar')->nullable();
+         $table->foreignId('user_id')->nullable();
         $table->timestamps();
         });
          DB::table('stok_barang')->update([

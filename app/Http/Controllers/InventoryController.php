@@ -24,7 +24,7 @@ class InventoryController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
-        $query = StokBarang::query();
+        $query = StokBarang::with('user');
             if ($search) {
             $query->where(function($q) use ($search) {
                 $q->where('nama_barang', 'like', "%{$search}%")
@@ -153,7 +153,7 @@ class InventoryController extends Controller
     
     public function show($id)
     {
-        $barang = StokBarang::findOrFail($id);
+        $barang = StokBarang::with('user')->findOrFail($id);
 
 
     /*
@@ -164,22 +164,25 @@ class InventoryController extends Controller
 
   $riwayatMasuk = DetailBarangMasuk::where('stok_barang_id', $barang->id)
     ->whereHas('barangMasuk', fn ($q) => $q->whereNotNull('tanggal_masuk'))
-    ->with('barangMasuk')
+    ->with('barangMasuk.user')
     ->get()
-        ->map(function ($item) {
+    ->map(function ($item) {
 
-            return [
-                'id' => $item->id,
-                'sumber' => 'barang_masuk',
-                'tanggal' => Carbon::parse($item->tanggal_masuk),
-                'aktivitas' => 'Pembelian',
-                'masuk' => $item->jumlah,
-                'keluar' => 0,
-                'keterangan' => $item->supplier
-                    ? 'Supplier: ' . $item->supplier
-                    : 'Barang masuk',
-            ];
-        });
+        $header = $item->barangMasuk;
+
+        return [
+            'id' => $header->id,
+            'sumber' => 'barang_masuk',
+            'tanggal' => Carbon::parse($header->tanggal_masuk),
+            'aktivitas' => 'Pembelian',
+            'masuk' => $item->jumlah,
+            'keluar' => 0,
+            'keterangan' => $header->supplier
+                ? 'Supplier: ' . $header->supplier
+                : 'Barang masuk',
+            'user' => $header->user?->name ?? '-',
+        ];
+    });
 
 
     /*
@@ -188,63 +191,64 @@ class InventoryController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    $riwayatKeluar = BarangKeluar::with('notaPembeli')
-        ->where('stok_barang_id', $barang->id)
-        ->get()
-        ->map(function ($item) {
+    $riwayatKeluar = BarangKeluar::with('notaPembeli.user')
+    ->where('stok_barang_id', $barang->id)
+    ->get()
+    ->map(function ($item) {
 
-            $tanggal = $item->notaPembeli?->tanggal_keluar
-                ?? $item->created_at;
+        $tanggal = $item->notaPembeli?->tanggal_keluar
+            ?? $item->created_at;
 
-            return [
-                'id' => $item->id,
-                'sumber' => 'barang_keluar',
-                'tanggal' => Carbon::parse($tanggal),
-                'aktivitas' => 'Penjualan',
-                'masuk' => 0,
-                'keluar' => $item->jumlah,
-                'keterangan' => $item->notaPembeli
-                    ? 'Nota M3J#-' . str_pad(
-                        $item->notaPembeli->id,
-                        6,
-                        '0',
-                        STR_PAD_LEFT
-                    )
-                    : 'Barang keluar',
-            ];
-        });
-
-
+        return [
+            'id' => $item->id,
+            'sumber' => 'barang_keluar',
+            'tanggal' => Carbon::parse($tanggal),
+            'aktivitas' => 'Penjualan',
+            'masuk' => 0,
+            'keluar' => $item->jumlah,
+            'keterangan' => $item->notaPembeli
+                ? 'Nota M3J#-' . str_pad(
+                    $item->notaPembeli->id,
+                    6,
+                    '0',
+                    STR_PAD_LEFT
+                )
+                : 'Barang keluar',
+            'user' => $item->notaPembeli?->user?->name ?? '-',
+        ];
+    });
     /*
     |--------------------------------------------------------------------------
     | RIWAYAT STOK OPNAME
     |--------------------------------------------------------------------------
     */
 
-    $riwayatOpname = StokOpname::where('stok_barang_id', $barang->id)
-        ->get()
-        ->map(function ($item) {
+    $riwayatOpname = StokOpname::with('user')
+    ->where('stok_barang_id', $barang->id)
+    ->get()
+    ->map(function ($item) {
 
-            return [
-                'id' => $item->id,
-                'sumber' => 'stok_opname',
-                'tanggal' => Carbon::parse($item->tanggal),
+        return [
+            'id' => $item->id,
+            'sumber' => 'stok_opname',
+            'tanggal' => Carbon::parse($item->tanggal),
 
-                'aktivitas' => $item->jenis_opname === 'penambahan'
-                    ? 'Opname Penambahan'
-                    : 'Opname Pengurangan',
+            'aktivitas' => $item->jenis_opname === 'penambahan'
+                ? 'Opname Penambahan'
+                : 'Opname Pengurangan',
 
-                'masuk' => $item->jenis_opname === 'penambahan'
-                    ? $item->jumlah_perubahan
-                    : 0,
+            'masuk' => $item->jenis_opname === 'penambahan'
+                ? $item->jumlah_perubahan
+                : 0,
 
-                'keluar' => $item->jenis_opname === 'pengurangan'
-                    ? $item->jumlah_perubahan
-                    : 0,
+            'keluar' => $item->jenis_opname === 'pengurangan'
+                ? $item->jumlah_perubahan
+                : 0,
 
-                'keterangan' => $item->keterangan_opname ?? '-',
-            ];
-        });
+            'keterangan' => $item->keterangan_opname ?? '-',
+            'user' => $item->user?->name ?? '-',
+        ];
+    });
 
 
     /*
@@ -606,7 +610,7 @@ class InventoryController extends Controller
     public function sampah()
 {
     // 1. Ambil data master stok barang yang sudah dihapus
-    $trashedBarang = StokBarang::onlyTrashed()->get();
+    $trashedBarang = StokBarang::onlyTrashed()->with('user')->get();
 
     // 2. Ambil data riwayat barang masuk yang sudah dihapus
     $trashedBarangMasuk = BarangMasuk::onlyTrashed()
@@ -732,7 +736,7 @@ class InventoryController extends Controller
     $search = $request->query('search');
 
     // 1. Ambil data katalog stok barang dengan filter pencarian jika diisi
-    $stokBarang = StokBarang::when($search, function ($query, $search) {
+        $stokBarang = StokBarang::with('user')->when($search, function ($query, $search) {
                         return $query->where('nama_barang', 'like', '%' . $search . '%')
                                      ->orWhere('kategori', 'like', '%' . $search . '%')
                                      ->orWhere('kode_barang', 'like', '%' . $search . '%');
@@ -1171,12 +1175,6 @@ public function barangkeluardestroy($id)
     |--------------------------------------------------------------------------
     | RAPIIKAN NAMA BARANG
     |--------------------------------------------------------------------------
-    |
-    | Contoh:
-    | "  Semen   Tiga Roda  "
-    | menjadi:
-    | "Semen Tiga Roda"
-    |
     */
     $namaBarang = preg_replace(
         '/\s+/',
@@ -1257,6 +1255,7 @@ public function barangkeluardestroy($id)
             |--------------------------------------------------------------------------
             */
             $data = $request->all();
+            $data['user_id'] = Auth::id();   // ← baru, selalu dari user yang login
 
             $namaFoto = null;
 
