@@ -11,12 +11,12 @@ class BarangMasuk extends Model
     use HasFactory, SoftDeletes;
     protected $table = 'barang_masuk';
 
-    protected $fillable = ['stok_barang_id', 'jumlah', 'tanggal_masuk','tanggal_pesan', 'supplier','deleted_at'];
+    protected $fillable = ['tanggal_masuk','tanggal_pesan', 'supplier','deleted_at'];
 
-    // Relasi ke tabel StokBarang
-    public function stokBarang()
+    // Relasi ke tabel Detail Barang Masuk
+    public function detail()
     {
-        return $this->belongsTo(StokBarang::class, 'stok_barang_id');
+        return $this->hasMany(DetailBarangMasuk::class);
     }
     public function sudahDiterima(): bool
 {

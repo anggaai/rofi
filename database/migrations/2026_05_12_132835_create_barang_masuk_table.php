@@ -12,8 +12,6 @@ return new class extends Migration
     public function up(): void {
     Schema::create('barang_masuk', function (Blueprint $table) {
         $table->id();
-        $table->foreignId('stok_barang_id')->constrained('stok_barang')->onDelete('cascade');
-        $table->integer('jumlah');
         $table->date('tanggal_pesan');
         $table->date('tanggal_masuk')->nullable();
         $table->string('supplier')->nullable();

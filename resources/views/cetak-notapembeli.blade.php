@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Invoice - INV-{{ str_pad($nota->id, 6, '0', STR_PAD_LEFT) }}</title>
+    <title>Invoice - {{ $nota->no_nota ?? 'INV-'.str_pad($nota->id, 6, '0', STR_PAD_LEFT) }}</title>
 
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
@@ -236,7 +236,7 @@
                         <p class="text-[10px] font-mono font-bold text-black mt-1">
 
                             No:
-                            INV-{{ str_pad($nota->id, 6, '0', STR_PAD_LEFT) }}
+                            {{ $nota->no_nota ?? 'INV-'.str_pad($nota->id, 6, '0', STR_PAD_LEFT) }}
 
                         </p>
 

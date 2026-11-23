@@ -27,6 +27,7 @@ class InventorySeeder extends Seeder
 
             DB::table('barang_keluar')->truncate();
             DB::table('nota_pembeli')->truncate();
+            DB::table('detail_barang_masuk')->truncate();
             DB::table('barang_masuk')->truncate();
             DB::table('stok_barang')->truncate();
 
@@ -278,15 +279,22 @@ class InventorySeeder extends Seeder
                     ->copy()
                     ->subDays($leadTimes[$index]);
 
-                DB::table('barang_masuk')->insert([
-                    'stok_barang_id' => $barangId[$item['kode_barang']],
-                    'jumlah' => $item['jumlah_terjual'] + $item['stok'],
+                $barangMasukId = DB::table('barang_masuk')->insertGetId([
                     'tanggal_pesan' => $tanggalPesan->format('Y-m-d'),
                     'tanggal_masuk' => $tanggalMasuk->format('Y-m-d'),
                     'supplier' => $item['supplier'],
                     'created_at' => $tanggalMasuk->copy()->setTime(8, 0),
                     'updated_at' => $tanggalMasuk->copy()->setTime(8, 0),
                     'deleted_at' => null,
+                ]);
+
+                DB::table('detail_barang_masuk')->insert([
+                    'barang_masuk_id' => $barangMasukId,
+                    'stok_barang_id'  => $barangId[$item['kode_barang']],
+                    'jumlah'          => $item['jumlah_terjual'] + $item['stok'],
+                    'harga_beli'      => $item['harga_beli'],
+                    'created_at' => $tanggalMasuk->copy()->setTime(8, 0),
+                    'updated_at' => $tanggalMasuk->copy()->setTime(8, 0),
                 ]);
             }
 

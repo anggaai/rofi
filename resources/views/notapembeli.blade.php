@@ -79,7 +79,7 @@
                             <td class="px-6 py-5 align-top">
                                 <div class="flex flex-col">
                                     <span class="text-xs font-mono text-indigo-600 bg-indigo-50/60 self-start px-2 py-0.5 rounded-md font-bold tracking-wide mb-1">
-                                        MJ3#-{{ str_pad($item->id, 6, '0', STR_PAD_LEFT) }}
+                                        {{ $item->no_nota ?? 'INV-'.str_pad($item->id, 6, '0', STR_PAD_LEFT) }}
                                     </span>
                                     <span class="text-slate-800 font-bold leading-tight">{{ $item->nama_pembeli }}</span>
                                     <span class="text-slate-400 text-xs mt-1 flex items-center gap-1">

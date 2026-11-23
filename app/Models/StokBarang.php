@@ -56,6 +56,10 @@ public function stokOpnames()
     {
         return $this->hasMany(StokOpname::class, 'stok_barang_id');
     }
+public function detailBarangMasuk()
+    {
+        return $this->hasMany(DetailBarangMasuk::class, 'stok_barang_id');
+    }
     
 protected $dates = ['deleted_at']; 
 }

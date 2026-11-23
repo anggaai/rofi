@@ -80,10 +80,10 @@
                             @forelse($trashedBarangMasuk as $log)
                             <tr class="hover:bg-slate-50 border-b border-slate-100">
                                 <td class="px-6 py-4 font-semibold">
-                                    {{ $log->stokBarang ? $log->stokBarang->nama_barang : 'Barang Telah Dihapus Permanen' }}
+                                    {{ $log->detail->pluck('stokBarang.nama_barang')->filter()->join(', ') ?: 'Barang Telah Dihapus Permanen' }}
                                 </td>
                                 <td class="px-6 py-4">{{ $log->supplier ?? '-' }}</td>
-                                <td class="px-6 py-4 text-center font-bold text-indigo-600">{{ $log->jumlah }} unit</td>
+                                <td class="px-6 py-4 text-center font-bold text-indigo-600">{{ $log->detail->sum('jumlah') }} unit</td>
                                 <td class="px-6 py-4 text-center">{{ $log->deleted_at->format('d/m/Y H:i') }}</td>
                                 <td class="px-6 py-4 text-center">
                                     <div class="flex items-center justify-center gap-2">

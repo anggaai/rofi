@@ -296,7 +296,7 @@
             type="text"
             name="search"
             value="{{ request('search') }}"
-            placeholder="Cari barang, kode, kategori, supplier..."
+            placeholder="Cari barang, kategori, supplier..."
             class="w-72 rounded-lg border-gray-300 focus:border-green-500 focus:ring-green-500"
         >
 
@@ -360,7 +360,7 @@
                 <tr class="bg-slate-50/70 border-b border-slate-100 text-slate-400 text-[10px] uppercase tracking-[0.2em]">
                     <th class="px-6 py-4.5 font-bold">Waktu & Referensi</th>
                     <th class="px-6 py-4.5 font-bold">Material</th>
-                    <th class="px-6 py-4.5 font-bold text-center">Jumlah</th>
+                    <th class="px-6 py-4.5 font-bold text-center">Total Barang</th>
                     <th class="px-6 py-4.5 font-bold">Supplier</th>
                     <th class="px-6 py-4.5 font-bold text-center">Status</th>
                     <th class="px-6 py-4.5 font-bold text-center w-24">Tindakan</th>
@@ -384,25 +384,42 @@
                         </div>
                     </td>
                     
-                    <td class=" pr-5 py-5 align-middle">
-                        <div class="flex items-center gap-2">
-                            <div class="w-9 h-9 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center border border-indigo-100/30 group-hover:bg-white group-hover:shadow-sm transition-all shrink-0">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-                                </svg>
+                                                          <td class="pr-5 py-5 align-middle">
+                        <div class="min-w-[220px] max-w-xs">
+                            <div class="space-y-1">
+                                @foreach ($item->detail as $d)
+                                    <div class="grid grid-cols-[1fr_auto] gap-x-3 items-baseline">
+                                        <span class="text-xs font-semibold text-slate-700 truncate">
+                                            {{ $d->stokBarang->nama_barang ?? 'Barang telah dihapus' }}
+                                        </span>
+                                        <span class="text-[11px] text-slate-400 text-right tabular-nums whitespace-nowrap">
+                                            {{ number_format($d->jumlah) }} &times; Rp{{ number_format($d->harga_beli, 0, ',', '.') }}
+                                        </span>
+                                    </div>
+                                @endforeach
+                                @if ($item->detail->isEmpty())
+                                    <span class="text-xs text-slate-400">Material tidak diketahui</span>
+                                @endif
                             </div>
-                            <span class="text-sm font-semibold text-slate-700 group-hover:text-indigo-600 transition-colors">
-                                {{ $item->stokBarang->nama_barang ?? 'Material tidak diketahui' }}
-                            </span>
+
+                            @if ($item->detail->isNotEmpty())
+                                <div class="flex items-center justify-between gap-3 mt-2 pt-2 border-t border-dashed border-slate-200">
+                                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Total Pembelian</span>
+                                    <span class="text-xs font-bold text-emerald-700 tabular-nums">
+                                        Rp{{ number_format($item->detail->sum(fn ($d) => $d->jumlah * $d->harga_beli), 0, ',', '.') }}
+                                    </span>
+                                </div>
+                            @endif
                         </div>
                     </td>
-                    
+
                     <td class="px-6 py-5 align-middle text-center">
                         <span class="text-sm font-bold text-slate-800 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100">
-                            {{ number_format($item->jumlah) }}
+                            {{ number_format($item->detail->sum('jumlah')) }}
                         </span>
+                        <p class="text-[10px] text-slate-400 mt-1">{{ $item->detail->count() }} jenis barang</p>
                     </td>
-                    
+
                     <td class="px-6 py-5 align-middle">
                         <span class="text-sm text-slate-600 font-medium">{{ $item->supplier ?? '-' }}</span>
                     </td>
@@ -424,10 +441,8 @@
                     <td class="px-6 py-5 align-middle text-center">
                         <div class="flex items-center justify-center">
                             <button type="button"
-                                onclick="bukaModalEdit(this)"
+                                onclick='bukaModalEdit(this, @json($item->detail->map(fn($d) => ["id" => $d->id, "nama" => $d->stokBarang->nama_barang ?? "Material tidak diketahui", "jumlah" => $d->jumlah])))'
                                 data-id="{{ $item->id }}"
-                                data-material="{{ $item->stokBarang->nama_barang ?? 'Material tidak diketahui' }}"
-                                data-jumlah="{{ $item->jumlah }}"
                                 data-tanggal-pesan="{{ $item->tanggal_pesan ? \Carbon\Carbon::parse($item->tanggal_pesan)->format('Y-m-d') : '' }}"
                                 data-tanggal-masuk="{{ $item->tanggal_masuk ? \Carbon\Carbon::parse($item->tanggal_masuk)->format('Y-m-d') : '' }}"
                                 data-diterima="{{ $item->sudahDiterima() ? '1' : '0' }}"
@@ -451,7 +466,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="6" class="px-6 py-16 text-center text-slate-400">
+                    <td colspan="7" class="px-6 py-16 text-center text-slate-400">
                         <div class="flex flex-col items-center justify-center space-y-2">
                             <svg class="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0a2 2 0 01-2 2H6a2 2 0 01-2-2m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5M14 10h1"/>
@@ -487,18 +502,12 @@
             <form action="{{ route('barang-masuk.store') }}" method="POST">
                 @csrf
                 <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Material</label>
-                        <select name="stok_barang_id" required class="w-full border-slate-200 rounded-xl focus:ring-indigo-500">
-                            <option value="">Pilih Material</option>
-                            @foreach($stokBarang as $sb)
-                                <option value="{{ $sb->id }}">{{ $sb->nama_barang }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                   <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Jumlah</label>
-                        <input type="number" name="jumlah" id="editJumlah" required min="1" class="w-full border-slate-200 rounded-xl focus:ring-indigo-500">
+                                        <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-sm font-medium text-slate-700">Daftar Barang</label>
+                            <button type="button" onclick="tambahBarisInput()" class="text-xs font-bold text-indigo-600 hover:text-indigo-700">+ Tambah Barang</button>
+                        </div>
+                        <div id="daftarBarisInput" class="space-y-2"></div>
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-500 mb-2">
@@ -513,7 +522,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Tanggal Masuk</label>
-                        <input type="date" name="tanggal_masuk" id="editTanggalMasuk" class="w-full border-slate-200 rounded-xl focus:ring-indigo-500">
+                        <input type="date" name="tanggal_masuk" class="w-full border-slate-200 rounded-xl focus:ring-indigo-500">
                         <p class="text-[11px] text-slate-400 mt-1">Isi saat barang datang. Setelah diisi, tidak bisa dikosongkan lagi.</p>
                     </div>
                     <div>
@@ -538,14 +547,10 @@
             @csrf
             @method('PUT')
             <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Material</label>
-                    <input type="text" id="editMaterial" readonly class="w-full border-slate-200 rounded-xl bg-slate-100 text-slate-500 cursor-not-allowed">
-                    <p class="text-[11px] text-slate-400 mt-1">Material tidak bisa diubah. Jika salah pilih, hapus lalu input ulang.</p>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Jumlah (sesuai yang benar-benar diterima)</label>
-                    <input type="number" name="jumlah" id="editJumlah" required min="1" class="w-full border-slate-200 rounded-xl focus:ring-indigo-500">
+                                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Daftar Barang</label>
+                    <div id="daftarBarisEdit" class="space-y-2"></div>
+                    <p class="text-[11px] text-slate-400 mt-1">Isi jumlah sesuai yang benar-benar diterima untuk tiap barang.</p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Tanggal Pemesanan</label>
@@ -553,7 +558,7 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Tanggal Masuk <span class="text-slate-400 font-normal">(opsional)</span></label>
-                    <input type="date" name="tanggal_masuk" class="w-full border-slate-200 rounded-xl focus:ring-indigo-500">
+                    <input type="date" name="tanggal_masuk" id="editTanggalMasuk" class="w-full border-slate-200 rounded-xl focus:ring-indigo-500">
                     <p class="text-[11px] text-slate-400 mt-1">Kosongkan jika barang belum datang. Stok baru bertambah setelah tanggal masuk diisi.</p>
                 </div>
                 <div>
@@ -570,18 +575,63 @@
 </div>
 </x-sidebar>
 <script>
-    function bukaModalEdit(btn) {
+   function bukaModalEdit(btn, detail) {
     const d = btn.dataset;
     const urlTemplate = "{{ route('barang-masuk.update', ['id' => '__ID__']) }}";
 
     document.getElementById('formEdit').action = urlTemplate.replace('__ID__', d.id);
-    document.getElementById('editMaterial').value = d.material;
-    document.getElementById('editJumlah').value = d.jumlah;
     document.getElementById('editTanggalPesan').value = d.tanggalPesan;
     document.getElementById('editTanggalMasuk').value = d.tanggalMasuk;
     document.getElementById('editTanggalMasuk').required = d.diterima === '1';
     document.getElementById('editSupplier').value = d.supplier;
 
+    const daftar = document.getElementById('daftarBarisEdit');
+    daftar.innerHTML = detail.map(item => `
+        <div class="flex gap-2 items-center">
+            <input type="hidden" name="detail[${item.id}][id]" value="${item.id}">
+            <span class="text-xs w-32 truncate" title="${item.nama}">${item.nama}</span>
+            <input type="number" name="detail[${item.id}][jumlah]" value="${item.jumlah}" required min="1" class="w-24 border-slate-200 rounded-xl text-xs py-2">
+        </div>
+    `).join('');
+
     document.getElementById('modalEdit').classList.remove('hidden');
 }
+
+    const DAFTAR_MATERIAL = @json($stokBarang->map(fn($sb) => ['id' => $sb->id, 'nama' => $sb->nama_barang, 'harga_beli' => $sb->harga_beli]));
+    let indexBarisInput = 0;
+
+    function optionMaterial(terpilih = '') {
+        return DAFTAR_MATERIAL.map(sb =>
+            `<option value="${sb.id}" data-harga="${sb.harga_beli}" ${sb.id == terpilih ? 'selected' : ''}>${sb.nama}</option>`
+        ).join('');
+    }
+
+    function tambahBarisInput() {
+        const i = indexBarisInput++;
+        const div = document.createElement('div');
+        div.className = 'flex gap-2 items-start';
+        div.innerHTML = `
+            <select name="barang[${i}][stok_barang_id]" required onchange="isiHargaOtomatis(this)" class="w-full border-slate-200 rounded-xl text-xs py-2 focus:ring-1 focus:ring-indigo-500">
+                <option value="">Pilih Material</option>
+                ${optionMaterial()}
+            </select>
+            <input type="number" name="barang[${i}][jumlah]" required min="1" placeholder="Jumlah" class="w-24 border-slate-200 rounded-xl text-xs py-2">
+            <input type="number" name="barang[${i}][harga_beli]" required min="0" step="0.01" placeholder="Harga Beli" class="w-28 border-slate-200 rounded-xl text-xs py-2">
+            <button type="button" onclick="this.closest('div').remove()" class="p-2 text-rose-500 hover:bg-rose-50 rounded-lg">&times;</button>
+        `;
+        document.getElementById('daftarBarisInput').appendChild(div);
+    }
+
+    function isiHargaOtomatis(select) {
+        const opt = select.selectedOptions[0];
+        const harga = opt ? opt.dataset.harga : '';
+        select.closest('div').querySelector('input[name$="[harga_beli]"]').value = harga || '';
+    }
+
+    // Modal input selalu mulai dengan satu baris kosong
+    document.getElementById('modalInput').addEventListener('click', function initBarisPertama() {
+        if (document.getElementById('daftarBarisInput').children.length === 0) {
+            tambahBarisInput();
+        }
+    });
 </script>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\BarangKeluar;
 use App\Models\BarangMasuk;
+use App\Models\DetailBarangMasuk;
 use App\Models\NotaPembeli;
 use App\Models\StokBarang;
 use App\Models\StokOpname;
@@ -44,14 +45,15 @@ class DashboardController extends Controller
         | GRAFIK BARANG MASUK
         |--------------------------------------------------------------------------
         */
-        $barangMasukPerBulan = BarangMasuk::query()
-            ->selectRaw("DATE_FORMAT(tanggal_masuk, '%Y-%m') AS periode")
-            ->selectRaw('SUM(jumlah) AS total')
-            ->whereBetween('tanggal_masuk', [$awalEnamBulan, $akhirBulanIni])
-            ->groupByRaw("DATE_FORMAT(tanggal_masuk, '%Y-%m')")
-            ->orderBy('periode')
-            ->get()
-            ->pluck('total', 'periode');
+        $barangMasukPerBulan = DetailBarangMasuk::query()
+                ->join('barang_masuk', 'detail_barang_masuk.barang_masuk_id', '=', 'barang_masuk.id')
+                ->selectRaw("DATE_FORMAT(barang_masuk.tanggal_masuk, '%Y-%m') AS periode")
+                ->selectRaw('SUM(detail_barang_masuk.jumlah) AS total')
+                ->whereBetween('barang_masuk.tanggal_masuk', [$awalEnamBulan, $akhirBulanIni])
+                ->groupByRaw("DATE_FORMAT(barang_masuk.tanggal_masuk, '%Y-%m')")
+                ->orderBy('periode')
+                ->get()
+                ->pluck('total', 'periode');
 
         /*
         |--------------------------------------------------------------------------
@@ -121,9 +123,10 @@ class DashboardController extends Controller
         $totalNilaiStok = (float) StokBarang::query()
             ->sum(DB::raw('stok * harga_beli'));
 
-        $totalMasukBulanIni = (int) BarangMasuk::query()
-            ->whereBetween('tanggal_masuk', [$awalBulanIni, $akhirBulanIni])
-            ->sum('jumlah');
+        $totalMasukBulanIni = (int) DetailBarangMasuk::query()
+            ->join('barang_masuk', 'detail_barang_masuk.barang_masuk_id', '=', 'barang_masuk.id')
+            ->whereBetween('barang_masuk.tanggal_masuk', [$awalBulanIni, $akhirBulanIni])
+            ->sum('detail_barang_masuk.jumlah');
 
         $totalKeluarBulanIni = (int) BarangKeluar::query()
             ->join(

@@ -13,6 +13,7 @@ return new class extends Migration
     {
          Schema::create('nota_pembeli', function (Blueprint $table) {
             $table->id();
+            $table->string('no_nota', 20)->nullable()->unique();
             $table->string('nama_pembeli');
             $table->string('tujuan')->nullable(); 
             $table->datetime('tanggal_keluar');
