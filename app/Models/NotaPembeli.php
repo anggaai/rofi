@@ -4,12 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Concerns\MilikUser;
 
 class NotaPembeli extends Model
 {
     protected $table = 'nota_pembeli';
-    use SoftDeletes;
-
+   use SoftDeletes, MilikUser;
+   
     protected $fillable = [
         'no_nota',
         'nama_pembeli',

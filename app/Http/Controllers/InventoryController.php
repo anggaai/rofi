@@ -1,23 +1,22 @@
 <?php
 
 namespace App\Http\Controllers;
+use App\Http\Controllers\Controller;
 use App\Models\BarangKeluar;
 use App\Models\BarangMasuk;
+use App\Models\DetailBarangMasuk;
 use App\Models\NotaPembeli;
 use App\Models\StokBarang;
 use App\Models\StokOpname;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
-use Psy\Readline\Interactive\Input\Buffer;
-use Illuminate\Pagination\LengthAwarePaginator;
-use Carbon\Carbon;
-use App\Models\DetailBarangMasuk;
-use id;
 
 class InventoryController extends Controller
 {
@@ -421,8 +420,7 @@ class InventoryController extends Controller
 {
     DB::transaction(function () use ($id) {
         // 1. Cari data log barang masuk yang mau dihapus, beserta detailnya
-        $logMasuk = BarangMasuk::with('detail')->findOrFail($id);
-
+        $logMasuk = BarangMasuk::milikUser()->with('detail')->findOrFail($id);
         if ($logMasuk->sudahDiterima()) {
             // 2. KEMBALIKAN STOK semua barang di dalam detailnya
             foreach ($logMasuk->detail as $baris) {
@@ -607,57 +605,42 @@ class InventoryController extends Controller
         /**
      * Menampilkan data yang sudah di-softdelete (tempat sampah)
      */
-    public function sampah()
+   public function sampah()
 {
-    // 1. Ambil data master stok barang yang sudah dihapus
-    $trashedBarang = StokBarang::onlyTrashed()->with('user')->get();
+    $isAdmin = Auth::user()->isSuperAdmin();
 
-    // 2. Ambil data riwayat barang masuk yang sudah dihapus
-    $trashedBarangMasuk = BarangMasuk::onlyTrashed()
-    ->with('detail.stokBarang')
-    ->get();
+    $trashedBarang  = $isAdmin ? StokBarang::onlyTrashed()->with('user')->get() : collect();
+    $trashedOpnames = $isAdmin
+        ? StokOpname::onlyTrashed()->with(['stokBarang', 'user'])->orderByDesc('deleted_at')->get()
+        : collect();
 
-    // 3. Ambil nota pembeli yang sudah dihapus
-    $trashedNotaPembeli = NotaPembeli::onlyTrashed()
-        ->with([
-            'barangKeluar' => function ($query) {
-                $query->withTrashed()->with('stokBarang');
-            }
-        ])
+    $trashedBarangMasuk = BarangMasuk::milikUser()->onlyTrashed()
+        ->with('detail.stokBarang')
+        ->get();
+
+    $trashedNotaPembeli = NotaPembeli::milikUser()->onlyTrashed()
+        ->with(['barangKeluar' => function ($query) {
+            $query->withTrashed()->with('stokBarang');
+        }])
         ->latest('deleted_at')
         ->get();
 
-    // 4. Ambil barang keluar yang sudah dihapus
     $trashedBarangKeluar = BarangKeluar::onlyTrashed()
+        ->whereHas('notaPembeli', fn ($q) => $q->withTrashed()->milikUser())
         ->with([
-            'notaPembeli' => function ($query) {
-                $query->withTrashed();
-            },
-            'stokBarang'
+            'notaPembeli' => fn ($q) => $q->withTrashed(),
+            'stokBarang',
         ])
         ->latest('deleted_at')
         ->get();
 
-    $trashedOpnames = StokOpname::onlyTrashed()
-    ->with(['stokBarang', 'user'])
-    ->orderByDesc('deleted_at')
-    ->get();
-
-    // 5. Hitung seluruh data yang ada di tempat sampah
-    $countTrashed =
-        $trashedBarang->count() +
-        $trashedBarangMasuk->count() +
-        $trashedNotaPembeli->count() +
-        $trashedBarangKeluar->count() +
-         $trashedOpnames->count();
+    $countTrashed = $trashedBarang->count() + $trashedBarangMasuk->count()
+        + $trashedNotaPembeli->count() + $trashedBarangKeluar->count()
+        + $trashedOpnames->count();
 
     return view('sampah', compact(
-        'trashedBarang',
-        'trashedBarangMasuk',
-        'trashedNotaPembeli',
-        'trashedBarangKeluar',
-        'trashedOpnames',
-        'countTrashed'
+        'trashedBarang', 'trashedBarangMasuk', 'trashedNotaPembeli',
+        'trashedBarangKeluar', 'trashedOpnames', 'countTrashed'
     ));
 }
 
@@ -667,8 +650,7 @@ class InventoryController extends Controller
 
     try {
         // Ambil nota yang sudah di-soft delete
-        $nota = NotaPembeli::withTrashed()
-            ->findOrFail($id);
+        $nota = NotaPembeli::milikUser()->withTrashed()->findOrFail($id);
 
         // Pulihkan nota
         $nota->restore();
@@ -774,7 +756,7 @@ class InventoryController extends Controller
     | DATA TABEL BARANG MASUK
     |--------------------------------------------------------------------------
     */
-     $query = BarangMasuk::with(['detail.stokBarang', 'user'])  
+     $query = BarangMasuk::milikUser()->with(['detail.stokBarang', 'user'])  
     ->orderByRaw('tanggal_masuk IS NULL DESC')
     ->latest('tanggal_masuk')
     ->latest('id');
@@ -834,27 +816,17 @@ class InventoryController extends Controller
 
 
     // Total unit barang masuk bulan ini
-    $totalMasukBulanIni = DetailBarangMasuk::whereHas('barangMasuk', function ($q) use ($awalBulan, $akhirBulan) {
-        $q->whereBetween('tanggal_masuk', [$awalBulan, $akhirBulan]);
+  $totalMasukBulanIni = DetailBarangMasuk::whereHas('barangMasuk', function ($q) use ($awalBulan, $akhirBulan) {
+    $q->milikUser()->whereBetween('tanggal_masuk', [$awalBulan, $akhirBulan]);
     })->sum('jumlah');
 
 
     // Jumlah transaksi/log barang masuk bulan ini
-    $totalTransaksiMasuk = BarangMasuk::whereBetween(
-        'tanggal_masuk',
-        [$awalBulan, $akhirBulan]
-    )->count();
-
+   $totalTransaksiMasuk = BarangMasuk::milikUser()->whereBetween('tanggal_masuk', [$awalBulan, $akhirBulan])->count();
 
     // Supplier aktif bulan ini
-    $supplierAktif = BarangMasuk::whereBetween(
-            'tanggal_masuk',
-            [$awalBulan, $akhirBulan]
-        )
-        ->whereNotNull('supplier')
-        ->where('supplier', '!=', '')
-        ->distinct()
-        ->count('supplier');
+    $supplierAktif = BarangMasuk::milikUser()->whereBetween('tanggal_masuk', [$awalBulan, $akhirBulan])
+    ->whereNotNull('supplier')->where('supplier', '!=', '')->distinct()->count('supplier');
 
 
     // Rata-rata jumlah barang per transaksi
@@ -871,10 +843,7 @@ class InventoryController extends Controller
     | Lead Time = Tanggal Masuk - Tanggal Pesan
     |
     */
-    $rataLeadTime = BarangMasuk::whereBetween(
-            'tanggal_masuk',
-            [$awalBulan, $akhirBulan]
-        )
+    $rataLeadTime = BarangMasuk::milikUser()->whereBetween('tanggal_masuk', [$awalBulan, $akhirBulan])
         ->whereNotNull('tanggal_pesan')
         ->whereNotNull('tanggal_masuk')
         ->whereColumn('tanggal_masuk', '>=', 'tanggal_pesan')
@@ -1308,7 +1277,7 @@ public function restoreBarangMasuk($id)
 {
     DB::transaction(function () use ($id) {
         // Cari data di sampah menggunakan withTrashed()
-        $logMasuk = BarangMasuk::withTrashed()->with('detail')->findOrFail($id);
+        $logMasuk = BarangMasuk::milikUser()->withTrashed()->with('detail')->findOrFail($id);
 
         // Kembalikan statusnya menjadi aktif
         $logMasuk->restore();
@@ -1333,7 +1302,7 @@ public function restoreBarangMasuk($id)
 public function forceDeleteBarangMasuk($id)
 {
     // Cari data di sampah menggunakan withTrashed()
-    $logMasuk = BarangMasuk::withTrashed()->findOrFail($id);
+    $logMasuk = BarangMasuk::milikUser()->withTrashed()->findOrFail($id);
     
     // Hapus total secara permanen dari database
     $logMasuk->forceDelete();
@@ -1349,10 +1318,13 @@ public function notaPembeli(Request $request)
         $search = $request->get('search');
 
         // Gunakan eager loading (with) agar query efisien
-        $notaPembeli = NotaPembeli::with(['barangKeluar.stokBarang', 'user'])   // ← DIUBAH
+        $notaPembeli = NotaPembeli::milikUser()
+            ->with(['barangKeluar.stokBarang', 'user'])
             ->when($search, function ($query, $search) {
-                return $query->where('nama_pembeli', 'like', "%{$search}%")
-                             ->orWhere('no_nota', 'like', "%{$search}%");
+                $query->where(function ($q) use ($search) {
+                    $q->where('nama_pembeli', 'like', "%{$search}%")
+                    ->orWhere('no_nota', 'like', "%{$search}%");
+                });
             })
             ->latest()
             ->paginate(10);
@@ -1684,7 +1656,7 @@ public function destroyNotaPembeli($id)
 
     try {
         // 1. Cari nota pembeli berdasarkan ID nota
-        $nota = NotaPembeli::with('barangKeluar')->findOrFail($id);
+        $nota = NotaPembeli::milikUser()->with('barangKeluar')->findOrFail($id);
 
         // 2. Ambil semua barang keluar yang ada di dalam nota
         foreach ($nota->barangKeluar as $barangKeluar) {
@@ -1726,7 +1698,7 @@ public function destroyNotaPembeli($id)
 public function cetak($id)
 {
     // Mengambil data nota spesifik beserta detail rincian barang keluar dan stok barangnya
-    $nota = NotaPembeli::with(['barangKeluar.stokBarang', 'user'])->findOrFail($id);   // ← DIUBAH
+    $nota = NotaPembeli::milikUser()->with(['barangKeluar.stokBarang', 'user'])->findOrFail($id);   // ← DIUBAH
 
     // Mengembalikan view khusus cetak cetak_invoice.blade.php
     return view('cetak-notapembeli', compact('nota'));
@@ -1940,7 +1912,7 @@ public function restoreOpname($id)
 }
 public function forceDeleteNotaPembeli($id)
 {
-    $nota = NotaPembeli::onlyTrashed()->findOrFail($id);
+    $nota = NotaPembeli::milikUser()->onlyTrashed()->findOrFail($id);
 
     $nota->forceDelete();
 
@@ -2292,8 +2264,7 @@ public function updateBarangMasuk(Request $request, $id)
     ]);
 
     DB::transaction(function () use ($request, $id) {
-        $log = BarangMasuk::lockForUpdate()->with('detail')->findOrFail($id);
-
+        $log = BarangMasuk::milikUser()->lockForUpdate()->with('detail')->findOrFail($id);
         $sudahDiterima = $log->tanggal_masuk !== null;
         $akanDiterima  = $request->filled('tanggal_masuk');
 

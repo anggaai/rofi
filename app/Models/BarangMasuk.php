@@ -5,10 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Concerns\MilikUser;
 
 class BarangMasuk extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, MilikUser;
     protected $table = 'barang_masuk';
 
     protected $fillable = ['tanggal_masuk','tanggal_pesan', 'supplier','user_id','deleted_at'];
