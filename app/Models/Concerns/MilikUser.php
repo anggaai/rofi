@@ -2,7 +2,7 @@
 
 namespace App\Models\Concerns;
 
-
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
@@ -13,7 +13,7 @@ trait MilikUser
     {
         $user = Auth::user();
 
-        if ($user && $user->isSuperAdmin()) {
+        if ($user instanceof User && $user->isSuperAdmin()) {
             return $query;
         }
 

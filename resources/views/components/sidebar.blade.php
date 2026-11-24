@@ -87,20 +87,22 @@
                 <span x-show="open" x-transition class="text-sm font-medium whitespace-nowrap">Dashboard</span>
             </a>
 
-            <!-- Stok Barang -->
-            <a href="/stok" 
-               class="flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 group"
-               :class="{
-                   'justify-center': !open, 
-                   'justify-start': open,
-                   'bg-blue-600/20 text-blue-400 border-l-4 border-blue-500': currentPath.startsWith('/stok'),
-                   'text-slate-300 hover:bg-slate-800/50 hover:text-white': !currentPath.startsWith('/stok')
-               }">
-                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
-                <span x-show="open" x-transition class="text-sm font-medium whitespace-nowrap">Stok Barang</span>
-            </a>
+           @if(auth()->user()->isSuperAdmin())
+                <!-- Stok Barang -->
+                <a href="/stok" 
+                class="flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 group"
+                :class="{
+                    'justify-center': !open, 
+                    'justify-start': open,
+                    'bg-blue-600/20 text-blue-400 border-l-4 border-blue-500': currentPath.startsWith('/stok'),
+                    'text-slate-300 hover:bg-slate-800/50 hover:text-white': !currentPath.startsWith('/stok')
+                }">
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                    <span x-show="open" x-transition class="text-sm font-medium whitespace-nowrap">Stok Barang</span>
+                </a>
+            @endif
 
             <!-- Barang Masuk -->
             <a href="/barang-masuk" 
@@ -148,19 +150,22 @@
             </a>
 
             <!-- Buffer Stok -->
-            <a href="/buffer" 
-               class="flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 group"
-               :class="{
-                   'justify-center': !open, 
-                   'justify-start': open,
-                   'bg-blue-600/20 text-blue-400 border-l-4 border-blue-500': currentPath.startsWith('/buffer'),
-                   'text-slate-300 hover:bg-slate-800/50 hover:text-white': !currentPath.startsWith('/buffer')
-               }">
-                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span x-show="open" x-transition class="text-sm font-medium whitespace-nowrap">Buffer Stok</span>
-            </a>
+            @if(auth()->user()->isSuperAdmin())
+                <!-- Buffer Stok -->
+                <a href="/buffer" 
+                class="flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 group"
+                :class="{
+                    'justify-center': !open, 
+                    'justify-start': open,
+                    'bg-blue-600/20 text-blue-400 border-l-4 border-blue-500': currentPath.startsWith('/buffer'),
+                    'text-slate-300 hover:bg-slate-800/50 hover:text-white': !currentPath.startsWith('/buffer')
+                }">
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span x-show="open" x-transition class="text-sm font-medium whitespace-nowrap">Buffer Stok</span>
+                </a>
+            @endif
 
             @if(auth()->user()->isSuperAdmin())
             <!-- Manajemen Akun -->

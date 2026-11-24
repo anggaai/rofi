@@ -607,7 +607,9 @@ class InventoryController extends Controller
      */
    public function sampah()
 {
-    $isAdmin = Auth::user()->isSuperAdmin();
+    /** @var \App\Models\User $user */
+    $user = Auth::user();
+    $isAdmin = $user->isSuperAdmin();
 
     $trashedBarang  = $isAdmin ? StokBarang::onlyTrashed()->with('user')->get() : collect();
     $trashedOpnames = $isAdmin
