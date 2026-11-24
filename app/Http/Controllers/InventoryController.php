@@ -84,8 +84,13 @@ class InventoryController extends Controller
      */
     private function sendWhatsAppNotification($bufferStok, $jumlahKritis)
     {
-        $no_wa_tujuan = '6285185217795';
-        $api_token = '7VrQ2hCw3AG7s1Pp7Jrr';
+
+        $no_wa_tujuan = config('services.fonnte.target');
+        $api_token = config('services.fonnte.token');
+        if (empty($no_wa_tujuan) || empty($api_token)) {
+            Log::error('Konfigurasi Fonnte belum lengkap.');
+            return;
+        }
         
         // Batas maksimal karakter WhatsApp adalah 4096
         // Jika item banyak, bagi menjadi beberapa pesan
@@ -127,22 +132,34 @@ class InventoryController extends Controller
      * Fungsi helper untuk mengirim WA
      */
     private function sendWA($no_wa_tujuan, $api_token, $pesan)
-    {
-        try {
-            $response = Http::withHeaders(['Authorization' => $api_token])
-                ->post('https://api.fonnte.com/send', [
-                    'target' => $no_wa_tujuan,
-                    'message' => $pesan,
-                    'countryCode' => '62',
-                ]);
-            
-            Log::info('WA Notifikasi terkirim: ' . $response->body());
-            return true;
-        } catch (\Exception $e) {
-            Log::error('WA Notifikasi gagal: ' . $e->getMessage());
+{
+    try {
+        $response = Http::timeout(30)
+            ->withHeaders(['Authorization' => $api_token])
+            ->post('https://api.fonnte.com/send', [
+                'target' => $no_wa_tujuan,
+                'message' => $pesan,
+                'countryCode' => '62',
+            ]);
+
+        $hasil = $response->json();
+
+        if (!$response->successful() || !($hasil['status'] ?? false)) {
+            Log::error('WA Fonnte gagal:', [
+                'response' => $hasil ?? $response->body()
+            ]);
+
             return false;
         }
+
+        Log::info('WA Fonnte berhasil:', $hasil);
+        return true;
+
+    } catch (\Exception $e) {
+        Log::error('WA Fonnte error: ' . $e->getMessage());
+        return false;
     }
+}
 
     public function create()
     {
